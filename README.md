@@ -5,10 +5,11 @@
 ## 주요 기능
 
 - 전체·발전소별 현재 출력과 금일/금월/누적 발전량
-- 시간별 출력 및 최근 일별 발전량 추이
+- 현재 시각까지의 오늘·어제 시간별 발전량 비교 및 최근 일별 추이
 - 발전소 상태와 통신 지연 표시
 - 장애·알림 및 월간 보고서 화면
-- 30초 자동 갱신
+- Upstash Redis 저장 데이터 기반 30초 화면 갱신
+- 외부 QStash 15분 수집 및 당일·전일 보정
 - NREMS 연동 실패 또는 미설정 시 데모 모드
 - 데스크톱 및 모바일 반응형 UI
 
@@ -32,6 +33,10 @@ NREMS_BASE_URL=http://nrems.co.kr
 NREMS_GROUP_ID=726
 NREMS_MANAGER_GROUP_ID=0
 NREMS_STRICT=false
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+QSTASH_CURRENT_SIGNING_KEY=
+QSTASH_NEXT_SIGNING_KEY=
 ```
 
 Vercel에서는 Project Settings → Environment Variables에 같은 이름으로 등록합니다.
@@ -46,6 +51,14 @@ npm run build
 ## API 경로
 
 - `GET /api/dashboard`: NREMS 데이터를 대시보드 형식으로 정규화
+- `POST /api/collect`: QStash 서명을 검증한 뒤 NREMS를 수집해 Redis에 저장
 - `GET /api/health`: 서버 및 NREMS 환경변수 설정 상태 확인
+
+QStash 스케줄은 `https://green-solar-beta.vercel.app/api/collect`을 대상으로 아래 두 개를 사용합니다.
+
+- 주간 수집: `CRON_TZ=Asia/Seoul */15 5-21 * * *`
+- 전날 최종 보정: `CRON_TZ=Asia/Seoul 10 0 * * *`
+
+각 수집은 오늘 값을 같은 날짜 키에 덮어써 지연 수신을 보정하고, 전날 데이터도 함께 최종 보정합니다. 저장 데이터는 400일 후 자동 만료됩니다.
 
 NREMS 계정정보와 로그인 세션은 Route Handler 내부에서만 사용되며 브라우저 번들에 포함되지 않습니다.

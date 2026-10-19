@@ -1,6 +1,6 @@
 import "server-only";
 import { createCipheriv } from "node:crypto";
-import type { AlertData, DashboardData, DailyPoint, PlantData, PlantState, TodayPoint } from "./types";
+import type { AlertData, DashboardData, DailyPoint, HourlyEnergyPoint, PlantData, PlantState, TodayPoint } from "./types";
 
 const AES_KEY = Buffer.from("abcdefghijklmnopqrstuvwxyz123456", "utf8");
 const ZERO_IV = Buffer.alloc(16);
@@ -119,6 +119,37 @@ function mergeTodaySeries(details: UnknownRecord[]): TodayPoint[] {
   return [...points.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
+function hourLabel(row: UnknownRecord): string {
+  const raw = textValue(row.TIME || row.DATE);
+  const match = raw.match(/(?:^|\s)(\d{1,2}):/);
+  return String(match ? Number(match[1]) : Number(raw.slice(0, 2))).padStart(2, "0");
+}
+
+function mergeHistoricalSeries(results: UnknownRecord[]): HourlyEnergyPoint[] {
+  const points = new Map<string, HourlyEnergyPoint>();
+  for (const result of results) {
+    for (const row of arrayValue(result.pdata)) {
+      const label = hourLabel(row);
+      if (!/^\d{2}$/.test(label)) continue;
+      const previous = points.get(label) ?? { label, energyKwh: 0 };
+      const energyKwh = numberValue(row.INV);
+      previous.energyKwh += energyKwh;
+      points.set(label, previous);
+    }
+  }
+  return [...points.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function koreaDate(daysFromToday = 0): string {
+  const date = new Date(Date.now() + daysFromToday * 86_400_000);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 function mergeDailySeries(details: UnknownRecord[]): DailyPoint[] {
   const points = new Map<string, DailyPoint>();
   for (const detail of details) {
@@ -173,13 +204,25 @@ export async function fetchNremsDashboard(): Promise<DashboardData> {
   const plants = arrayValue(live.plist).map(mapPlant);
   if (!plants.length) throw new Error("NREMS에서 발전소 목록을 받지 못했습니다.");
 
-  const detailResults = await Promise.allSettled(
-    plants.map((plant) => postForm<UnknownRecord>(baseUrl, "/v2/local/proc/index_proc.php", {
-      act: "empty",
-      pscode: plant.id,
-    }, cookie)),
-  );
+  const [detailResults, yesterdayResults] = await Promise.all([
+    Promise.allSettled(
+      plants.map((plant) => postForm<UnknownRecord>(baseUrl, "/v2/local/proc/index_proc.php", {
+        act: "empty",
+        pscode: plant.id,
+      }, cookie)),
+    ),
+    Promise.allSettled(
+      plants.map((plant) => postForm<UnknownRecord>(baseUrl, "/v2/local/proc/pl_time_proc.php", {
+        act: "empty",
+        s_date: koreaDate(-1),
+        pscode: plant.id,
+      }, cookie)),
+    ),
+  ]);
   const details = detailResults
+    .filter((result): result is PromiseFulfilledResult<UnknownRecord> => result.status === "fulfilled")
+    .map((result) => result.value);
+  const yesterdayDetails = yesterdayResults
     .filter((result): result is PromiseFulfilledResult<UnknownRecord> => result.status === "fulfilled")
     .map((result) => result.value);
 
@@ -207,6 +250,7 @@ export async function fetchNremsDashboard(): Promise<DashboardData> {
     summary,
     plants,
     todaySeries: mergeTodaySeries(details),
+    yesterdaySeries: mergeHistoricalSeries(yesterdayDetails),
     dailySeries: mergeDailySeries(details),
     alerts: mergeAlerts(details),
   };

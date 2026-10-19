@@ -41,6 +41,11 @@ const stateLabels: Record<PlantState, string> = {
 };
 
 const compactNumber = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 });
+const koreaHourFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Seoul",
+  hour: "2-digit",
+  hourCycle: "h23",
+});
 
 function formatNumber(value: number, maximumFractionDigits = 2) {
   return new Intl.NumberFormat("ko-KR", { maximumFractionDigits }).format(value);
@@ -79,60 +84,80 @@ function summaryForPlant(plant: PlantData): SummaryData {
   };
 }
 
-function buildLinePath(values: number[], width = 720, height = 228, padding = 24) {
-  if (!values.length) return "";
-  const max = Math.max(...values, 1);
-  return values
-    .map((value, index) => {
-      const x = padding + (index / Math.max(values.length - 1, 1)) * (width - padding * 2);
-      const y = height - padding - (value / max) * (height - padding * 2);
+type ChartPoint = { label: string; value: number };
+
+function pointCoordinates(point: ChartPoint, index: number, total: number, max: number, width: number, height: number, padding: number) {
+  const hour = Number.parseInt(point.label, 10);
+  const ratio = Number.isFinite(hour) ? hour / 23 : index / Math.max(total - 1, 1);
+  return {
+    x: padding + ratio * (width - padding * 2),
+    y: height - padding - (point.value / max) * (height - padding * 2),
+  };
+}
+
+function buildLinePath(data: ChartPoint[], max: number, width = 720, height = 228, padding = 24) {
+  return data
+    .map((point, index) => {
+      const { x, y } = pointCoordinates(point, index, data.length, max, width, height, padding);
       return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(" ");
 }
 
-function TrendLineChart({ data, unit, ariaLabel }: { data: Array<{ label: string; value: number }>; unit: string; ariaLabel: string }) {
+function koreaHour(value: string) {
+  return Number(koreaHourFormatter.format(new Date(value)));
+}
+
+function hourlyChartData(data: DashboardData, day: "today" | "yesterday") {
+  const currentHour = koreaHour(data.updatedAt);
+  const series = day === "today" ? data.todaySeries.filter((point) => Number(point.label) <= currentHour) : data.yesterdaySeries;
+  return series.map((point) => ({ label: point.label, value: point.energyKwh }));
+}
+
+function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; unit: string; ariaLabel: string }) {
   const width = 720;
   const height = 228;
   const padding = 24;
-  const values = data.map((point) => point.value);
+  const values = [...data, ...comparisonData].map((point) => point.value);
   const max = Math.max(...values, 1);
-  const line = buildLinePath(values, width, height, padding);
-  const area = line ? `${line} L${width - padding} ${height - padding} L${padding} ${height - padding} Z` : "";
-  const tickIndexes = [...new Set([0, Math.floor((data.length - 1) / 2), data.length - 1])].filter((index) => index >= 0);
+  const line = buildLinePath(data, max, width, height, padding);
+  const comparisonLine = buildLinePath(comparisonData, max, width, height, padding);
+  const firstPoint = data[0] ? pointCoordinates(data[0], 0, data.length, max, width, height, padding) : null;
+  const lastPoint = data.at(-1) ? pointCoordinates(data.at(-1) as ChartPoint, data.length - 1, data.length, max, width, height, padding) : null;
+  const area = line && firstPoint && lastPoint ? `${line} L${lastPoint.x.toFixed(1)} ${height - padding} L${firstPoint.x.toFixed(1)} ${height - padding} Z` : "";
+  const tickHours = [0, 6, 12, 18, 23];
 
   if (!data.length) return <EmptyChart />;
 
   return (
-    <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel}>
-      <defs>
-        <linearGradient id="solar-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--green-500)" stopOpacity="0.24" />
-          <stop offset="1" stopColor="var(--green-500)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-        const y = padding + ratio * (height - padding * 2);
-        return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" />;
-      })}
-      <path d={area} fill="url(#solar-area)" />
-      <path d={line} className="chart-line" />
-      {data.map((point, index) => {
-        if (index !== data.length - 1 && index % Math.max(Math.floor(data.length / 8), 1) !== 0) return null;
-        const x = padding + (index / Math.max(data.length - 1, 1)) * (width - padding * 2);
-        const y = height - padding - (point.value / max) * (height - padding * 2);
-        return (
-          <circle key={`${point.label}-${index}`} cx={x} cy={y} r="4" className="chart-point">
-            <title>{`${point.label} · ${compactNumber.format(point.value)} ${unit}`}</title>
-          </circle>
-        );
-      })}
-      {tickIndexes.map((index) => {
-        const x = padding + (index / Math.max(data.length - 1, 1)) * (width - padding * 2);
-        return <text key={index} x={x} y={height - 4} textAnchor={index === 0 ? "start" : index === data.length - 1 ? "end" : "middle"}>{data[index]?.label}</text>;
-      })}
-      <text x={width - padding} y={14} textAnchor="end">{`${compactNumber.format(max)} ${unit}`}</text>
-    </svg>
+    <div className="trend-chart-wrap">
+      <div className="chart-legend" aria-hidden="true"><span><i className="legend-today" />오늘</span>{comparisonData.length ? <span><i className="legend-yesterday" />어제</span> : null}</div>
+      <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel}>
+        <defs>
+          <linearGradient id="solar-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="var(--green-500)" stopOpacity="0.24" />
+            <stop offset="1" stopColor="var(--green-500)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+          const y = padding + ratio * (height - padding * 2);
+          return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" />;
+        })}
+        {comparisonLine ? <path d={comparisonLine} className="chart-line chart-line-yesterday" /> : null}
+        <path d={area} fill="url(#solar-area)" />
+        <path d={line} className="chart-line" />
+        {data.map((point, index) => {
+          if (index !== data.length - 1 && Number(point.label) % 3 !== 0) return null;
+          const { x, y } = pointCoordinates(point, index, data.length, max, width, height, padding);
+          return <circle key={`${point.label}-${index}`} cx={x} cy={y} r="4" className="chart-point"><title>{`오늘 ${point.label}시 · ${compactNumber.format(point.value)} ${unit}`}</title></circle>;
+        })}
+        {tickHours.map((hour) => {
+          const x = padding + (hour / 23) * (width - padding * 2);
+          return <text key={hour} x={x} y={height - 4} textAnchor={hour === 0 ? "start" : hour === 23 ? "end" : "middle"}>{String(hour).padStart(2, "0")}시</text>;
+        })}
+        <text x={width - padding} y={14} textAnchor="end">{`${compactNumber.format(max)} ${unit}`}</text>
+      </svg>
+    </div>
   );
 }
 
@@ -351,8 +376,8 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
 
       <section className="overview-grid">
         <article className="panel chart-panel">
-          <div className="panel-heading"><div><h2>오늘 발전 추이</h2><p>시간별 전체 인버터 출력</p></div><button type="button" className="text-button" onClick={onOpenTrends}>상세 분석 <ChevronRight size={16} /></button></div>
-          <TrendLineChart data={data.todaySeries.map((point) => ({ label: `${point.label}시`, value: point.powerKw }))} unit="kW" ariaLabel="오늘 시간별 전체 인버터 출력 추이" />
+          <div className="panel-heading"><div><h2>오늘 발전 추이</h2><p>현재 시각까지 · 어제 시간별 발전량 비교</p></div><button type="button" className="text-button" onClick={onOpenTrends}>상세 분석 <ChevronRight size={16} /></button></div>
+          <TrendLineChart data={hourlyChartData(data, "today")} comparisonData={hourlyChartData(data, "yesterday")} unit="kWh" ariaLabel="현재 시각까지의 오늘 시간별 발전량과 어제 발전량 비교" />
         </article>
         <article className="panel status-panel">
           <div className="panel-heading"><div><h2>발전소 상태</h2><p>{data.plants.length}개소 관제 중</p></div><span className={data.summary.faultCount ? "summary-status warning" : "summary-status good"}>{data.summary.faultCount ? "확인 필요" : "전체 정상"}</span></div>
@@ -399,8 +424,8 @@ function TrendsSection({ data }: { data: DashboardData }) {
     <div className="section-stack">
       <div className="period-tabs" role="group" aria-label="분석 기간"><button type="button" className={period === "today" ? "active" : ""} onClick={() => setPeriod("today")}>오늘</button><button type="button" className={period === "month" ? "active" : ""} onClick={() => setPeriod("month")}>최근 30일</button></div>
       <article className="panel analysis-chart-panel">
-        <div className="panel-heading"><div><h2>{period === "today" ? "시간별 발전 출력" : "일별 발전량"}</h2><p>{period === "today" ? "발전 패턴과 피크 시간을 확인합니다." : "일사량 변화에 따른 발전량 추이를 확인합니다."}</p></div></div>
-        {period === "today" ? <TrendLineChart data={data.todaySeries.map((point) => ({ label: `${point.label}시`, value: point.powerKw }))} unit="kW" ariaLabel="오늘 시간별 발전 출력" /> : <DailyBarChart data={data.dailySeries} />}
+        <div className="panel-heading"><div><h2>{period === "today" ? "시간별 발전량 비교" : "일별 발전량"}</h2><p>{period === "today" ? "현재 시각까지의 오늘 발전량을 어제와 비교합니다." : "일사량 변화에 따른 발전량 추이를 확인합니다."}</p></div></div>
+        {period === "today" ? <TrendLineChart data={hourlyChartData(data, "today")} comparisonData={hourlyChartData(data, "yesterday")} unit="kWh" ariaLabel="현재 시각까지의 오늘 시간별 발전량과 어제 발전량 비교" /> : <DailyBarChart data={data.dailySeries} />}
       </article>
       <section className="analysis-insights">
         <article className="panel insight-card"><span>오늘 최고 출력</span><strong>{formatNumber(Math.max(...data.todaySeries.map((point) => point.powerKw), 0))} kW</strong><p>전체 설비용량의 {formatNumber((Math.max(...data.todaySeries.map((point) => point.powerKw), 0) / Math.max(data.summary.capacityKw, 1)) * 100, 1)}%</p></article>

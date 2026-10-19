@@ -84,10 +84,16 @@ button { color: inherit; }
 .summary-status.good { color: var(--green-700); background: var(--green-100); }
 .summary-status.warning { color: var(--yellow-700); background: var(--yellow-100); }
 .chart-panel { min-height: 330px; }
+.trend-chart-wrap { position: relative; }
+.chart-legend { min-height: 20px; display: flex; justify-content: flex-end; gap: 14px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend i { width: 18px; height: 3px; display: inline-block; border-radius: 999px; background: var(--green-500); }
+.chart-legend .legend-yesterday { height: 2px; background: repeating-linear-gradient(90deg, #98a49c 0 5px, transparent 5px 8px); }
 .trend-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .trend-chart text { fill: var(--muted); font-size: 10px; }
 .chart-grid-line { stroke: var(--line); stroke-width: 1; }
 .chart-line { fill: none; stroke: var(--green-500); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.chart-line-yesterday { stroke: #98a49c; stroke-width: 2; stroke-dasharray: 7 6; }
 .chart-point { fill: var(--surface); stroke: var(--green-500); stroke-width: 3; }
 .chart-bar { fill: var(--green-500); transition: opacity .18s ease; }
 .chart-bar:hover { opacity: .75; }
