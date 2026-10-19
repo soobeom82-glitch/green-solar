@@ -115,8 +115,8 @@ function hourlyChartData(data: DashboardData, day: "today" | "yesterday") {
 
 function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; unit: string; ariaLabel: string }) {
   const width = 720;
-  const height = 260;
-  const padding = 34;
+  const height = 280;
+  const padding = 64;
   const activeHours = [...data, ...comparisonData]
     .filter((point) => point.value > 0)
     .map((point) => Number.parseInt(point.label, 10))
@@ -166,7 +166,7 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
         })}
         {tickHours.map((hour) => {
           const x = padding + ((hour - startHour) / Math.max(endHour - startHour, 1)) * (width - padding * 2);
-          return <text key={hour} x={x} y={height - 10} textAnchor={hour === startHour ? "start" : hour === endHour ? "end" : "middle"}>{String(hour).padStart(2, "0")}시</text>;
+          return <text key={hour} x={x} y={height - 6} textAnchor={hour === startHour ? "start" : hour === endHour ? "end" : "middle"}>{String(hour).padStart(2, "0")}시</text>;
         })}
         <text x={width - padding} y={padding} textAnchor="end">{`${compactNumber.format(max)} ${unit}`}</text>
       </svg>
@@ -176,8 +176,8 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
 
 function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
   const width = 720;
-  const height = 228;
-  const padding = 24;
+  const height = 280;
+  const padding = 64;
   const max = Math.max(...data.map((point) => point.energyKwh), 1);
   const gap = 6;
   const chartWidth = width - padding * 2;
@@ -201,9 +201,9 @@ function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
           </rect>
         );
       })}
-      <text x={padding} y={height - 4}>{data[0]?.date}</text>
-      <text x={width - padding} y={height - 4} textAnchor="end">{data.at(-1)?.date}</text>
-      <text x={width - padding} y={14} textAnchor="end">{`${compactNumber.format(max)} kWh`}</text>
+      <text x={padding} y={height - 6}>{data[0]?.date}</text>
+      <text x={width - padding} y={height - 6} textAnchor="end">{data.at(-1)?.date}</text>
+      <text x={width - padding} y={padding} textAnchor="end">{`${compactNumber.format(max)} kWh`}</text>
     </svg>
   );
 }
