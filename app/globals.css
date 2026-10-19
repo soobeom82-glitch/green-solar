@@ -93,6 +93,20 @@ button { color: inherit; }
 .summary-status.good { color: var(--green-700); background: var(--green-100); }
 .summary-status.warning { color: var(--yellow-700); background: var(--yellow-100); }
 .chart-panel { min-height: 330px; }
+.generation-share-panel { min-height: 330px; }
+.share-chart-layout { min-height: 245px; display: grid; grid-template-columns: minmax(148px, .78fr) minmax(0, 1fr); align-items: center; gap: 18px; }
+.share-donut { width: min(190px, 100%); aspect-ratio: 1; margin: auto; display: grid; place-items: center; border-radius: 50%; }
+.share-donut-center { width: 58%; aspect-ratio: 1; padding-top: 10px; display: grid; place-content: center; justify-items: center; color: var(--ink); background: var(--surface); border-radius: 50%; text-align: center; }
+.share-donut-center span { color: #59685f; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.share-donut-center strong { margin-top: 4px; display: block; font-size: clamp(26px, 2.5vw, 34px); line-height: 1; letter-spacing: -0.06em; font-variant-numeric: tabular-nums; }
+.share-donut-center small { margin-top: 4px; color: #59685f; font-size: 13px; font-weight: 700; }
+.share-list { display: grid; gap: 10px; }
+.share-list-item { min-width: 0; padding: 12px; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: 9px; background: var(--surface-soft); border-radius: 12px; }
+.share-color { width: 12px; height: 34px; border-radius: 999px; }
+.share-list-item div { min-width: 0; display: grid; gap: 3px; }
+.share-list-item strong { overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.share-list-item div span { color: #59685f; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.share-list-item b { color: var(--ink); font-size: 21px; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .trend-chart-wrap { position: relative; }
 .chart-legend { min-height: 32px; display: flex; justify-content: flex-end; gap: 20px; color: #435248; font-size: 18px; font-weight: 800; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -239,6 +253,18 @@ button { color: inherit; }
   .panel-heading p { font-size: 16px; line-height: 1.45; }
   .text-button { min-height: 48px; font-size: 15px; }
   .chart-panel { min-height: auto; }
+  .generation-share-panel { min-height: auto; }
+  .share-chart-layout { min-height: auto; grid-template-columns: 1fr; gap: 17px; }
+  .share-donut { width: 218px; }
+  .share-donut-center span { font-size: 16px; }
+  .share-donut-center strong { font-size: 37px; }
+  .share-donut-center small { font-size: 15px; }
+  .share-list { gap: 11px; }
+  .share-list-item { padding: 14px; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 11px; }
+  .share-color { width: 14px; height: 42px; }
+  .share-list-item strong { font-size: 18px; }
+  .share-list-item div span { font-size: 16px; }
+  .share-list-item b { font-size: 25px; }
   .chart-legend { justify-content: flex-start; font-size: 20px; }
   .chart-legend i { width: 28px; height: 5px; }
   .trend-chart { min-height: 250px; }

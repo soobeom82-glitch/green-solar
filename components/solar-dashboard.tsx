@@ -407,6 +407,7 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
           <div className="panel-heading"><div><h2>오늘 발전 추이</h2><p>현재 시각까지 · 어제 시간별 발전량 비교</p></div><button type="button" className="text-button" onClick={onOpenTrends}>상세 분석 <ChevronRight size={16} /></button></div>
           <TrendLineChart data={hourlyChartData(data, "today")} comparisonData={hourlyChartData(data, "yesterday")} unit="kWh" ariaLabel="현재 시각까지의 오늘 시간별 발전량과 어제 발전량 비교" />
         </article>
+        <GenerationShareChart plants={data.plants} />
         <article className="panel status-panel">
           <div className="panel-heading"><div><h2>발전소 상태</h2><p>{data.plants.length}개소 관제 중</p></div><span className={data.summary.faultCount ? "summary-status warning" : "summary-status good"}>{data.summary.faultCount ? "확인 필요" : "전체 정상"}</span></div>
           <PlantRows plants={data.plants} onSelect={onSelectPlant} />
@@ -421,6 +422,44 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
         </article>
       </section>
     </div>
+  );
+}
+
+function GenerationShareChart({ plants }: { plants: PlantData[] }) {
+  const colors = ["#2d9d5d", "#2b76b8", "#d88a2d", "#8155b7"];
+  const totalToday = plants.reduce((total, plant) => total + plant.todayKwh, 0);
+  let cumulativePercent = 0;
+  const shares = plants.map((plant, index) => {
+    const percent = totalToday > 0 ? (plant.todayKwh / totalToday) * 100 : 0;
+    const start = cumulativePercent;
+    cumulativePercent += percent;
+    return { plant, percent, start, end: cumulativePercent, color: colors[index % colors.length] };
+  });
+  const pieBackground = totalToday > 0
+    ? `conic-gradient(${shares.map((share) => `${share.color} ${share.start}% ${share.end}%`).join(", ")})`
+    : "conic-gradient(#dce6df 0 100%)";
+  const ariaLabel = totalToday > 0
+    ? `금일 발전량 비중. ${shares.map((share) => `${share.plant.name} ${formatNumber(share.percent, 1)}퍼센트`).join(", ")}`
+    : "금일 발전량 데이터가 아직 없습니다.";
+
+  return (
+    <article className="panel generation-share-panel">
+      <div className="panel-heading"><div><h2>오늘 발전량 비중</h2><p>두 발전소가 오늘 만든 전력의 비율</p></div></div>
+      <div className="share-chart-layout">
+        <div className="share-donut" style={{ background: pieBackground }} role="img" aria-label={ariaLabel}>
+          <div className="share-donut-center"><span>금일 합계</span><strong>{formatNumber(totalToday, 0)}</strong><small>kWh</small></div>
+        </div>
+        <div className="share-list" aria-label="발전소별 금일 발전량 비중">
+          {shares.map((share) => (
+            <div className="share-list-item" key={share.plant.id}>
+              <span className="share-color" style={{ backgroundColor: share.color }} aria-hidden="true" />
+              <div><strong>{share.plant.name.replace(" 태양광발전소", "")}</strong><span>{formatNumber(share.plant.todayKwh)} kWh</span></div>
+              <b>{formatNumber(share.percent, 1)}%</b>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
   );
 }
 
