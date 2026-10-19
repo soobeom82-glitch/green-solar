@@ -85,19 +85,19 @@ function summaryForPlant(plant: PlantData): SummaryData {
 
 type ChartPoint = { label: string; value: number };
 
-function pointCoordinates(point: ChartPoint, index: number, total: number, max: number, width: number, height: number, padding: number) {
+function pointCoordinates(point: ChartPoint, max: number, width: number, height: number, padding: number, startHour = 0, endHour = 23) {
   const hour = Number.parseInt(point.label, 10);
-  const ratio = Number.isFinite(hour) ? hour / 23 : index / Math.max(total - 1, 1);
+  const ratio = Number.isFinite(hour) ? (hour - startHour) / Math.max(endHour - startHour, 1) : 0;
   return {
     x: padding + ratio * (width - padding * 2),
     y: height - padding - (point.value / max) * (height - padding * 2),
   };
 }
 
-function buildLinePath(data: ChartPoint[], max: number, width = 720, height = 228, padding = 24) {
+function buildLinePath(data: ChartPoint[], max: number, width = 720, height = 228, padding = 24, startHour = 0, endHour = 23) {
   return data
     .map((point, index) => {
-      const { x, y } = pointCoordinates(point, index, data.length, max, width, height, padding);
+      const { x, y } = pointCoordinates(point, max, width, height, padding, startHour, endHour);
       return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(" ");
@@ -117,16 +117,30 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
   const width = 720;
   const height = 228;
   const padding = 24;
-  const values = [...data, ...comparisonData].map((point) => point.value);
+  const activeHours = [...data, ...comparisonData]
+    .filter((point) => point.value > 0)
+    .map((point) => Number.parseInt(point.label, 10))
+    .filter(Number.isFinite);
+  const startHour = activeHours.length ? Math.max(0, Math.min(...activeHours) - 1) : 0;
+  const endHour = activeHours.length ? Math.min(23, Math.max(...activeHours) + 1) : 23;
+  const visibleData = data.filter((point) => {
+    const hour = Number.parseInt(point.label, 10);
+    return hour >= startHour && hour <= endHour;
+  });
+  const visibleComparisonData = comparisonData.filter((point) => {
+    const hour = Number.parseInt(point.label, 10);
+    return hour >= startHour && hour <= endHour;
+  });
+  const values = [...visibleData, ...visibleComparisonData].map((point) => point.value);
   const max = Math.max(...values, 1);
-  const line = buildLinePath(data, max, width, height, padding);
-  const comparisonLine = buildLinePath(comparisonData, max, width, height, padding);
-  const firstPoint = data[0] ? pointCoordinates(data[0], 0, data.length, max, width, height, padding) : null;
-  const lastPoint = data.at(-1) ? pointCoordinates(data.at(-1) as ChartPoint, data.length - 1, data.length, max, width, height, padding) : null;
+  const line = buildLinePath(visibleData, max, width, height, padding, startHour, endHour);
+  const comparisonLine = buildLinePath(visibleComparisonData, max, width, height, padding, startHour, endHour);
+  const firstPoint = visibleData[0] ? pointCoordinates(visibleData[0], max, width, height, padding, startHour, endHour) : null;
+  const lastPoint = visibleData.at(-1) ? pointCoordinates(visibleData.at(-1) as ChartPoint, max, width, height, padding, startHour, endHour) : null;
   const area = line && firstPoint && lastPoint ? `${line} L${lastPoint.x.toFixed(1)} ${height - padding} L${firstPoint.x.toFixed(1)} ${height - padding} Z` : "";
-  const tickHours = [0, 6, 12, 18, 23];
+  const tickHours = Array.from(new Set([startHour, Math.round((startHour * 2 + endHour) / 3), Math.round((startHour + endHour * 2) / 3), endHour]));
 
-  if (!data.length) return <EmptyChart />;
+  if (!visibleData.length) return <EmptyChart />;
 
   return (
     <div className="trend-chart-wrap">
@@ -145,14 +159,14 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
         {comparisonLine ? <path d={comparisonLine} className="chart-line chart-line-yesterday" /> : null}
         <path d={area} fill="url(#solar-area)" />
         <path d={line} className="chart-line" />
-        {data.map((point, index) => {
-          if (index !== data.length - 1 && Number(point.label) % 3 !== 0) return null;
-          const { x, y } = pointCoordinates(point, index, data.length, max, width, height, padding);
+        {visibleData.map((point, index) => {
+          if (index !== visibleData.length - 1 && Number(point.label) % 3 !== 0) return null;
+          const { x, y } = pointCoordinates(point, max, width, height, padding, startHour, endHour);
           return <circle key={`${point.label}-${index}`} cx={x} cy={y} r="4" className="chart-point"><title>{`오늘 ${point.label}시 · ${compactNumber.format(point.value)} ${unit}`}</title></circle>;
         })}
         {tickHours.map((hour) => {
-          const x = padding + (hour / 23) * (width - padding * 2);
-          return <text key={hour} x={x} y={height - 4} textAnchor={hour === 0 ? "start" : hour === 23 ? "end" : "middle"}>{String(hour).padStart(2, "0")}시</text>;
+          const x = padding + ((hour - startHour) / Math.max(endHour - startHour, 1)) * (width - padding * 2);
+          return <text key={hour} x={x} y={height - 4} textAnchor={hour === startHour ? "start" : hour === endHour ? "end" : "middle"}>{String(hour).padStart(2, "0")}시</text>;
         })}
         <text x={width - padding} y={14} textAnchor="end">{`${compactNumber.format(max)} ${unit}`}</text>
       </svg>
@@ -369,7 +383,7 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
       <section className="senior-status-card" aria-label="현재 발전 상태">
         <div>
           <p>현재 발전 상태</p>
-          <h2>{summary.faultCount + summary.offlineCount === 0 ? "정상적으로 발전 중입니다" : "확인이 필요한 설비가 있습니다"}</h2>
+          <h2>{summary.faultCount + summary.offlineCount === 0 ? "정상 발전 중" : "설비 확인 필요"}</h2>
           <span>마지막 확인 {formatUpdatedAt(data.updatedAt)}</span>
         </div>
         <div className="senior-status-value"><strong>{formatNumber(summary.currentKw)}</strong><span>kW</span><small>현재 출력</small></div>
