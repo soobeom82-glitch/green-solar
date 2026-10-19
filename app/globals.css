@@ -94,13 +94,10 @@ button { color: inherit; }
 .summary-status.warning { color: var(--yellow-700); background: var(--yellow-100); }
 .chart-panel { min-height: 330px; }
 .trend-chart-wrap { position: relative; }
-.chart-legend { min-height: 30px; display: flex; justify-content: flex-end; gap: 18px; color: #435248; font-size: 16px; font-weight: 800; }
+.chart-legend { min-height: 32px; display: flex; justify-content: flex-end; gap: 20px; color: #435248; font-size: 18px; font-weight: 800; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 24px; height: 4px; display: inline-block; border-radius: 999px; background: var(--green-500); }
 .chart-legend .legend-yesterday { height: 3px; background: repeating-linear-gradient(90deg, #68756d 0 7px, transparent 7px 11px); }
-.chart-reading { margin: 7px 0 4px; display: flex; flex-wrap: wrap; gap: 8px 16px; color: #314138; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.chart-reading span { padding: 7px 10px; border-radius: 9px; background: var(--surface-soft); }
-.chart-reading strong { font-size: 18px; }
 .trend-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .trend-chart text { fill: #526158; font-size: 14px; font-weight: 700; }
 .chart-grid-line { stroke: var(--line); stroke-width: 1; }
@@ -242,13 +239,10 @@ button { color: inherit; }
   .panel-heading p { font-size: 16px; line-height: 1.45; }
   .text-button { min-height: 48px; font-size: 15px; }
   .chart-panel { min-height: auto; }
-  .chart-legend { justify-content: flex-start; font-size: 18px; }
+  .chart-legend { justify-content: flex-start; font-size: 20px; }
   .chart-legend i { width: 28px; height: 5px; }
-  .chart-reading { margin: 10px 0 7px; gap: 9px; font-size: 17px; }
-  .chart-reading span { width: 100%; padding: 10px 12px; }
-  .chart-reading strong { font-size: 20px; }
   .trend-chart { min-height: 250px; }
-  .trend-chart text { font-size: 17px; font-weight: 750; }
+  .trend-chart text { font-size: 34px; font-weight: 800; }
   .chart-line { stroke-width: 5; }
   .chart-line-yesterday { stroke-width: 3; }
   .plant-table-panel, .sync-panel { display: none; }
