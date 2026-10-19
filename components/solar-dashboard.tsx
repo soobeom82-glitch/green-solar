@@ -115,8 +115,8 @@ function hourlyChartData(data: DashboardData, day: "today" | "yesterday") {
 
 function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; unit: string; ariaLabel: string }) {
   const width = 720;
-  const height = 228;
-  const padding = 24;
+  const height = 260;
+  const padding = 34;
   const activeHours = [...data, ...comparisonData]
     .filter((point) => point.value > 0)
     .map((point) => Number.parseInt(point.label, 10))
@@ -139,12 +139,15 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
   const lastPoint = visibleData.at(-1) ? pointCoordinates(visibleData.at(-1) as ChartPoint, max, width, height, padding, startHour, endHour) : null;
   const area = line && firstPoint && lastPoint ? `${line} L${lastPoint.x.toFixed(1)} ${height - padding} L${firstPoint.x.toFixed(1)} ${height - padding} Z` : "";
   const tickHours = Array.from(new Set([startHour, Math.round((startHour * 2 + endHour) / 3), Math.round((startHour + endHour * 2) / 3), endHour]));
+  const latestToday = [...visibleData].reverse().find((point) => point.value > 0);
+  const matchingYesterday = latestToday ? visibleComparisonData.find((point) => point.label === latestToday.label) : undefined;
 
   if (!visibleData.length) return <EmptyChart />;
 
   return (
     <div className="trend-chart-wrap">
       <div className="chart-legend" aria-hidden="true"><span><i className="legend-today" />오늘</span>{comparisonData.length ? <span><i className="legend-yesterday" />어제</span> : null}</div>
+      {latestToday ? <div className="chart-reading"><span>오늘 <strong>{latestToday.label}시</strong> {compactNumber.format(latestToday.value)} {unit}</span>{matchingYesterday ? <span>어제 <strong>{matchingYesterday.label}시</strong> {compactNumber.format(matchingYesterday.value)} {unit}</span> : null}</div> : null}
       <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel}>
         <defs>
           <linearGradient id="solar-area" x1="0" y1="0" x2="0" y2="1">
