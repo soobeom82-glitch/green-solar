@@ -378,6 +378,13 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
   onSelectPlant: (id: string) => void;
   onOpenTrends: () => void;
 }) {
+  const yesterdayDifference = summary.todayKwh - summary.yesterdayKwh;
+  const yesterdayComparison = yesterdayDelta == null
+    ? "전일 데이터 확인 중"
+    : yesterdayDifference === 0
+      ? "전일과 같음 (0%)"
+      : `전일 대비 ${yesterdayDifference > 0 ? "+" : "-"}${formatNumber(Math.abs(yesterdayDifference))} kWh (${yesterdayDelta > 0 ? "+" : ""}${formatNumber(yesterdayDelta, 1)}%)`;
+
   return (
     <div className="section-stack">
       <section className="senior-status-card" aria-label="현재 발전 상태">
@@ -390,7 +397,7 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
       </section>
       <section className="kpi-grid" aria-label="핵심 발전 지표">
         <KpiCard label="현재 출력" value={formatNumber(summary.currentKw)} unit="kW" note={`설비 대비 ${formatNumber(outputRate, 1)}%`} icon={Zap} tone="good" />
-        <KpiCard label="금일 발전량" value={formatNumber(summary.todayKwh)} unit="kWh" note={yesterdayDelta == null ? "전일 데이터 확인 중" : `전일 대비 ${yesterdayDelta >= 0 ? "+" : ""}${formatNumber(yesterdayDelta, 1)}%`} icon={Sunrise} tone={yesterdayDelta != null && yesterdayDelta < 0 ? "warning" : "good"} />
+        <KpiCard label="금일 발전량" value={formatNumber(summary.todayKwh)} unit="kWh" note={yesterdayComparison} icon={Sunrise} tone={yesterdayDelta != null && yesterdayDelta < 0 ? "warning" : "good"} />
         <KpiCard label="금월 발전량" value={formatNumber(monthEnergy.value)} unit={monthEnergy.unit} note={`누적 ${formatNumber(summary.totalKwh / 1_000_000)} GWh`} icon={CalendarDays} />
         <KpiCard label="운영 상태" value={`${normalTotal}`} unit={`/ ${monitoredTotal}`} note={summary.faultCount + summary.offlineCount === 0 ? "현재 장애 없음" : `확인 필요 ${summary.faultCount + summary.offlineCount}개소`} icon={CheckCircle2} tone={summary.faultCount + summary.offlineCount === 0 ? "good" : "warning"} />
       </section>

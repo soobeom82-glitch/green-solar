@@ -79,7 +79,7 @@ button { color: inherit; }
 .kpi-label { color: #526158; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 16px; font-weight: 750; }
 .kpi-value { margin-top: 11px; font-size: clamp(26px, 2.2vw, 32px); font-weight: 750; letter-spacing: -0.045em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .kpi-value span { margin-left: 5px; color: #526158; font-size: 15px; font-weight: 700; letter-spacing: 0; }
-.kpi-note { margin-top: 8px; color: #59685f; font-size: 15px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi-note { margin-top: 8px; color: #59685f; font-size: 15px; font-weight: 650; line-height: 1.4; }
 .tone-good { color: var(--green-700); }
 .tone-warning { color: var(--yellow-700); }
 
