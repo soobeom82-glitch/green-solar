@@ -139,12 +139,17 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
   const lastPoint = visibleData.at(-1) ? pointCoordinates(visibleData.at(-1) as ChartPoint, max, width, height, padding, startHour, endHour) : null;
   const area = line && firstPoint && lastPoint ? `${line} L${lastPoint.x.toFixed(1)} ${height - padding} L${firstPoint.x.toFixed(1)} ${height - padding} Z` : "";
   const tickHours = Array.from(new Set([startHour, Math.round((startHour * 2 + endHour) / 3), Math.round((startHour + endHour * 2) / 3), endHour]));
+  const todayTotal = data.reduce((total, point) => total + point.value, 0);
+  const yesterdayTotal = comparisonData.reduce((total, point) => total + point.value, 0);
 
   if (!visibleData.length) return <EmptyChart />;
 
   return (
     <div className="trend-chart-wrap">
-      <div className="chart-legend" aria-hidden="true"><span><i className="legend-today" />오늘</span>{comparisonData.length ? <span><i className="legend-yesterday" />어제</span> : null}</div>
+      <div className="chart-legend" aria-label={`오늘 발전량 ${formatNumber(todayTotal)} ${unit}${comparisonData.length ? `, 어제 발전량 ${formatNumber(yesterdayTotal)} ${unit}` : ""}`}>
+        <span><i className="legend-today" /><b>오늘</b><strong>{formatNumber(todayTotal)} <small>{unit}</small></strong></span>
+        {comparisonData.length ? <span><i className="legend-yesterday" /><b>어제</b><strong>{formatNumber(yesterdayTotal)} <small>{unit}</small></strong></span> : null}
+      </div>
       <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel}>
         <defs>
           <linearGradient id="solar-area" x1="0" y1="0" x2="0" y2="1">

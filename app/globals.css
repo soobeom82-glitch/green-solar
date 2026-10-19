@@ -108,9 +108,12 @@ button { color: inherit; }
 .share-list-item div span { color: #59685f; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .share-list-item b { color: var(--ink); font-size: 21px; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .trend-chart-wrap { position: relative; }
-.chart-legend { min-height: 32px; display: flex; justify-content: flex-end; gap: 20px; color: #435248; font-size: 18px; font-weight: 800; }
+.chart-legend { min-height: 40px; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px 20px; color: #435248; font-size: 16px; font-weight: 800; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 24px; height: 4px; display: inline-block; border-radius: 999px; background: var(--green-500); }
+.chart-legend b { font-size: 16px; }
+.chart-legend strong { color: var(--ink); font-size: 22px; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.chart-legend small { color: #526158; font-size: 14px; letter-spacing: 0; }
 .chart-legend .legend-yesterday { height: 3px; background: repeating-linear-gradient(90deg, #68756d 0 7px, transparent 7px 11px); }
 .trend-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .trend-chart text { fill: #526158; font-size: 14px; font-weight: 700; }
@@ -265,8 +268,11 @@ button { color: inherit; }
   .share-list-item strong { font-size: 18px; }
   .share-list-item div span { font-size: 16px; }
   .share-list-item b { font-size: 25px; }
-  .chart-legend { justify-content: flex-start; font-size: 20px; }
+  .chart-legend { justify-content: flex-start; gap: 9px 16px; font-size: 18px; }
   .chart-legend i { width: 28px; height: 5px; }
+  .chart-legend b { font-size: 18px; }
+  .chart-legend strong { font-size: 26px; }
+  .chart-legend small { font-size: 16px; }
   .trend-chart { min-height: 250px; }
   .trend-chart text { font-size: 34px; font-weight: 800; }
   .chart-line { stroke-width: 5; }
