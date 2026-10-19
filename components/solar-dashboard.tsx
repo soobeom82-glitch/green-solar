@@ -64,7 +64,6 @@ function formatUpdatedAt(value?: string) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
     hour12: false,
   }).format(new Date(value));
 }
@@ -301,7 +300,7 @@ export function SolarDashboard() {
         <div className="sidebar-spacer" />
         <div className="source-card">
           <div className="source-card-row"><Radio size={16} aria-hidden="true" /><span>데이터 연결</span></div>
-          <strong>{data?.source === "live" ? "NREMS 실시간" : "데모 모드"}</strong>
+          <strong>{data?.source === "live" ? "정상 연결" : "데모 모드"}</strong>
           <small>{data?.sourceMessage ?? "연결 확인 중"}</small>
         </div>
       </aside>
@@ -311,11 +310,11 @@ export function SolarDashboard() {
         <header className="topbar">
           <div className="title-wrap">
             <button type="button" className="mobile-menu-button" aria-label="메뉴 열기" onClick={() => setMenuOpen(true)}><Menu size={21} /></button>
-            <div><h1>{navigation.find((item) => item.id === section)?.label}</h1><p>{selectedPlant ? selectedPlant.name : "전체 발전소"} · {formatUpdatedAt(data?.updatedAt)} 기준</p></div>
+            <div><h1>{section === "overview" ? "발전소 한눈에 보기" : navigation.find((item) => item.id === section)?.label}</h1><p>{selectedPlant ? selectedPlant.name : "전체 발전소"} · 마지막 확인 {formatUpdatedAt(data?.updatedAt)}</p></div>
           </div>
           <div className="topbar-actions">
             <label className="plant-select-label"><span className="sr-only">발전소 선택</span><select value={selectedPlantId} onChange={(event) => setSelectedPlantId(event.target.value)}><option value="all">전체 발전소</option>{data?.plants.map((plant) => <option key={plant.id} value={plant.id}>{plant.name.replace(" 태양광발전소", "")}</option>)}</select></label>
-            <button type="button" className="refresh-button" onClick={() => void loadData()} disabled={isRefreshing}><RefreshCw size={17} className={isRefreshing ? "spinning" : ""} aria-hidden="true" /><span>새로고침</span></button>
+            <button type="button" className="refresh-button" onClick={() => void loadData()} disabled={isRefreshing}><RefreshCw size={18} className={isRefreshing ? "spinning" : ""} aria-hidden="true" /><span>지금 확인</span></button>
           </div>
         </header>
 
@@ -367,6 +366,14 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
 }) {
   return (
     <div className="section-stack">
+      <section className="senior-status-card" aria-label="현재 발전 상태">
+        <div>
+          <p>현재 발전 상태</p>
+          <h2>{summary.faultCount + summary.offlineCount === 0 ? "정상적으로 발전 중입니다" : "확인이 필요한 설비가 있습니다"}</h2>
+          <span>마지막 확인 {formatUpdatedAt(data.updatedAt)}</span>
+        </div>
+        <div className="senior-status-value"><strong>{formatNumber(summary.currentKw)}</strong><span>kW</span><small>현재 출력</small></div>
+      </section>
       <section className="kpi-grid" aria-label="핵심 발전 지표">
         <KpiCard label="현재 출력" value={formatNumber(summary.currentKw)} unit="kW" note={`설비 대비 ${formatNumber(outputRate, 1)}%`} icon={Zap} tone="good" />
         <KpiCard label="금일 발전량" value={formatNumber(summary.todayKwh)} unit="kWh" note={yesterdayDelta == null ? "전일 데이터 확인 중" : `전일 대비 ${yesterdayDelta >= 0 ? "+" : ""}${formatNumber(yesterdayDelta, 1)}%`} icon={Sunrise} tone={yesterdayDelta != null && yesterdayDelta < 0 ? "warning" : "good"} />
@@ -401,7 +408,7 @@ function LiveSection({ data, selectedPlant, onSelectPlant }: { data: DashboardDa
   return (
     <div className="section-stack">
       <section className="live-hero">
-        <div><span className="eyebrow">실시간 총출력</span><strong>{formatNumber(selectedPlant?.currentKw ?? data.summary.currentKw)} <small>kW</small></strong><p><span className="live-dot" />30초 간격 자동 갱신 · {formatUpdatedAt(data.updatedAt)}</p></div>
+        <div><span className="eyebrow">현재 총출력</span><strong>{formatNumber(selectedPlant?.currentKw ?? data.summary.currentKw)} <small>kW</small></strong><p><span className="live-dot" />화면은 30초마다 확인 · 실제 측정 {formatUpdatedAt(data.updatedAt)}</p></div>
         <div className="live-gauge"><Gauge size={24} /><span>출력률</span><strong>{formatNumber(selectedPlant?.outputRate ?? (data.summary.currentKw / Math.max(data.summary.capacityKw, 1)) * 100, 1)}%</strong></div>
       </section>
       <section className="plant-detail-grid">
