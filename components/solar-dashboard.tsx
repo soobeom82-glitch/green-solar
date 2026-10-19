@@ -173,7 +173,6 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
           const x = padding + ((hour - startHour) / Math.max(endHour - startHour, 1)) * (width - padding * 2);
           return <text key={hour} x={x} y={height - 6} textAnchor={hour === startHour ? "start" : hour === endHour ? "end" : "middle"}>{String(hour).padStart(2, "0")}시</text>;
         })}
-        <text x={width - padding} y={padding} textAnchor="end">{`${compactNumber.format(max)} ${unit}`}</text>
       </svg>
     </div>
   );
