@@ -139,12 +139,14 @@ function formatChartDate(date: string) {
   return new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" }).format(new Date(`${date}T12:00:00+09:00`));
 }
 
-function hourlyChartData(data: DashboardData, day: "today" | "yesterday") {
+function hourlyChartData(data: DashboardData, day: "today" | "yesterday", plantId?: string) {
   const currentHour = koreaHour(data.updatedAt);
+  const plantData = plantId ? data.plantSeries?.[plantId] : null;
   const series = day === "today"
-    ? data.todaySeries.filter((point) => Number(point.label) <= currentHour)
-    : data.yesterdaySeries;
-  return series.map((point) => ({ label: point.label, value: point.energyKwh }));
+    ? (plantId ? plantData?.todaySeries ?? [] : data.todaySeries)
+    : (plantId ? plantData?.yesterdaySeries ?? [] : data.yesterdaySeries);
+  const visibleSeries = day === "today" ? series.filter((point) => Number(point.label) <= currentHour) : series;
+  return visibleSeries.map((point) => ({ label: point.label, value: point.energyKwh }));
 }
 
 function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLabel = "오늘", comparisonLabel = "어제" }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; unit: string; ariaLabel: string; primaryLabel?: string; comparisonLabel?: string }) {
@@ -220,7 +222,7 @@ interface HistoricalTrendData {
   previousSeries: HourlyEnergyPoint[];
 }
 
-function TrendDateBrowser({ data }: { data: DashboardData }) {
+function TrendDateBrowser({ data, plantId }: { data: DashboardData; plantId?: string }) {
   const latestDate = koreaDate(data.updatedAt);
   const [selectedDate, setSelectedDate] = useState("");
   const [historicalData, setHistoricalData] = useState<HistoricalTrendData | null>(null);
@@ -239,7 +241,9 @@ function TrendDateBrowser({ data }: { data: DashboardData }) {
     const controller = new AbortController();
     setIsLoading(true);
     setHistoryError("");
-    void fetch(`/api/history?date=${encodeURIComponent(activeDate)}`, { cache: "no-store", signal: controller.signal })
+    const query = new URLSearchParams({ date: activeDate });
+    if (plantId) query.set("plantId", plantId);
+    void fetch(`/api/history?${query.toString()}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("저장된 발전량을 불러오지 못했습니다.");
         return response.json() as Promise<HistoricalTrendData>;
@@ -253,13 +257,13 @@ function TrendDateBrowser({ data }: { data: DashboardData }) {
       .finally(() => setIsLoading(false));
 
     return () => controller.abort();
-  }, [activeDate, isToday]);
+  }, [activeDate, isToday, plantId]);
 
   const primaryData: ChartPoint[] = isToday
-    ? hourlyChartData(data, "today")
+    ? hourlyChartData(data, "today", plantId)
     : (historicalData?.series ?? []).map((point) => ({ label: point.label, value: point.energyKwh }));
   const comparisonData: ChartPoint[] = isToday
-    ? hourlyChartData(data, "yesterday")
+    ? hourlyChartData(data, "yesterday", plantId)
     : (historicalData?.previousSeries ?? []).map((point) => ({ label: point.label, value: point.energyKwh }));
   const primaryLabel = isToday ? "오늘" : formatChartDate(activeDate);
   const comparisonDate = offsetDate(activeDate, -1);
@@ -459,7 +463,7 @@ export function SolarDashboard() {
               />
             ) : null}
             {section === "live" ? <LiveSection data={data} selectedPlant={selectedPlant} onSelectPlant={setSelectedPlantId} /> : null}
-            {section === "trends" ? <TrendsSection data={data} /> : null}
+            {section === "trends" ? <TrendsSection data={data} selectedPlant={selectedPlant} /> : null}
             {section === "alerts" ? <AlertsSection data={data} /> : null}
             {section === "reports" ? <ReportsSection data={data} /> : null}
           </>
@@ -593,19 +597,25 @@ function LiveSection({ data, selectedPlant, onSelectPlant }: { data: DashboardDa
   );
 }
 
-function TrendsSection({ data }: { data: DashboardData }) {
+function TrendsSection({ data, selectedPlant }: { data: DashboardData; selectedPlant: PlantData | null }) {
   const [period, setPeriod] = useState<"today" | "month">("today");
+  const selectedTrends = selectedPlant ? data.plantSeries?.[selectedPlant.id] : null;
+  const todaySeries = selectedPlant ? selectedTrends?.todaySeries ?? [] : data.todaySeries;
+  const dailySeries = selectedPlant ? selectedTrends?.dailySeries ?? [] : data.dailySeries;
+  const summary = selectedPlant ? summaryForPlant(selectedPlant) : data.summary;
+  const peakKw = Math.max(...todaySeries.map((point) => point.powerKw), 0);
+  const scopeLabel = selectedPlant ? selectedPlant.name.replace(" 태양광발전소", "") : "전체 발전소";
   return (
     <div className="section-stack">
       <div className="period-tabs" role="group" aria-label="분석 기간"><button type="button" className={period === "today" ? "active" : ""} onClick={() => setPeriod("today")}>오늘</button><button type="button" className={period === "month" ? "active" : ""} onClick={() => setPeriod("month")}>최근 30일</button></div>
       <article className="panel analysis-chart-panel">
-        <div className="panel-heading"><div><h2>{period === "today" ? "시간별 발전량 비교" : "일별 발전량"}</h2><p>{period === "today" ? "현재 시각까지의 오늘 발전량을 어제와 비교합니다." : "일사량 변화에 따른 발전량 추이를 확인합니다."}</p></div></div>
-        {period === "today" ? <TrendDateBrowser data={data} /> : <DailyBarChart data={data.dailySeries} />}
+        <div className="panel-heading"><div><h2>{period === "today" ? "시간별 발전량 비교" : "일별 발전량"}</h2><p>{scopeLabel} · {period === "today" ? "현재 시각까지의 오늘 발전량을 어제와 비교합니다." : "일사량 변화에 따른 발전량 추이를 확인합니다."}</p></div></div>
+        {period === "today" ? <TrendDateBrowser data={data} plantId={selectedPlant?.id} /> : <DailyBarChart data={dailySeries} />}
       </article>
       <section className="analysis-insights">
-        <article className="panel insight-card"><span>오늘 최고 출력</span><strong>{formatNumber(Math.max(...data.todaySeries.map((point) => point.powerKw), 0))} kW</strong><p>전체 설비용량의 {formatNumber((Math.max(...data.todaySeries.map((point) => point.powerKw), 0) / Math.max(data.summary.capacityKw, 1)) * 100, 1)}%</p></article>
-        <article className="panel insight-card"><span>금일 발전량</span><strong>{formatNumber(data.summary.todayKwh)} kWh</strong><p>발전소 {data.plants.length}개소 합계</p></article>
-        <article className="panel insight-card"><span>누적 발전량</span><strong>{formatNumber(data.summary.totalKwh / 1_000_000)} GWh</strong><p>전체 운영 기간 누적</p></article>
+        <article className="panel insight-card"><span>오늘 최고 출력</span><strong>{formatNumber(peakKw)} kW</strong><p>설비용량의 {formatNumber((peakKw / Math.max(summary.capacityKw, 1)) * 100, 1)}%</p></article>
+        <article className="panel insight-card"><span>금일 발전량</span><strong>{formatNumber(summary.todayKwh)} kWh</strong><p>{scopeLabel} 기준</p></article>
+        <article className="panel insight-card"><span>누적 발전량</span><strong>{formatNumber(summary.totalKwh / 1_000_000)} GWh</strong><p>{scopeLabel} 누적</p></article>
       </section>
     </div>
   );

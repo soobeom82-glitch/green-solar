@@ -1,4 +1,4 @@
-import type { DashboardData, DailyPoint, HourlyEnergyPoint, TodayPoint } from "./types";
+import type { DashboardData, DailyPoint, HourlyEnergyPoint, PlantTrendData, TodayPoint } from "./types";
 
 const powerCurve = [0, 0, 0, 2, 15, 44, 86, 139, 194, 231, 261, 278, 269, 242.07, 205, 151, 93, 42, 12, 0, 0, 0, 0, 0];
 
@@ -24,6 +24,14 @@ const dailySeries: DailyPoint[] = dailyValues.map((energyKwh, index) => ({
   date: `10-${String(index + 1).padStart(2, "0")}`,
   energyKwh,
 }));
+
+function scaledPlantSeries(ratio: number): PlantTrendData {
+  return {
+    todaySeries: todaySeries.map((point) => ({ ...point, powerKw: Number((point.powerKw * ratio).toFixed(2)), energyKwh: Number((point.energyKwh * ratio).toFixed(2)) })),
+    yesterdaySeries: yesterdaySeries.map((point) => ({ ...point, energyKwh: Number((point.energyKwh * ratio).toFixed(2)) })),
+    dailySeries: dailySeries.map((point) => ({ ...point, energyKwh: Number((point.energyKwh * ratio).toFixed(2)) })),
+  };
+}
 
 export function getDemoDashboard(reason = "NREMS 환경변수가 없어 데모 데이터로 표시 중입니다."): DashboardData {
   return {
@@ -77,6 +85,10 @@ export function getDemoDashboard(reason = "NREMS 환경변수가 없어 데모 �
     todaySeries,
     yesterdaySeries,
     dailySeries,
+    plantSeries: {
+      d2021064272: scaledPlantSeries(0.37),
+      p2018060034: scaledPlantSeries(0.63),
+    },
     alerts: [],
   };
 }

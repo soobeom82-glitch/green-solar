@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const stored = await getStoredDashboard();
-    if (stored) {
+    if (stored && Object.keys(stored.plantSeries ?? {}).length === stored.plants.length) {
       return NextResponse.json({
         ...stored,
         sourceMessage: "Upstash 저장 데이터 · NREMS 15분 수집",

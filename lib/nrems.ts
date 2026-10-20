@@ -1,6 +1,6 @@
 import "server-only";
 import { createCipheriv } from "node:crypto";
-import type { AlertData, DashboardData, DailyPoint, HourlyEnergyPoint, PlantData, PlantState, TodayPoint } from "./types";
+import type { AlertData, DashboardData, DailyPoint, HourlyEnergyPoint, PlantData, PlantState, PlantTrendData, TodayPoint } from "./types";
 
 const AES_KEY = Buffer.from("abcdefghijklmnopqrstuvwxyz123456", "utf8");
 const ZERO_IV = Buffer.alloc(16);
@@ -225,6 +225,17 @@ export async function fetchNremsDashboard(): Promise<DashboardData> {
   const yesterdayDetails = yesterdayResults
     .filter((result): result is PromiseFulfilledResult<UnknownRecord> => result.status === "fulfilled")
     .map((result) => result.value);
+  const plantSeries: Record<string, PlantTrendData> = Object.fromEntries(plants.map((plant, index) => {
+    const detail = detailResults[index];
+    const yesterdayDetail = yesterdayResults[index];
+    const currentDetail = detail?.status === "fulfilled" ? [detail.value] : [];
+    const priorDetail = yesterdayDetail?.status === "fulfilled" ? [yesterdayDetail.value] : [];
+    return [plant.id, {
+      todaySeries: mergeTodaySeries(currentDetail),
+      yesterdaySeries: mergeHistoricalSeries(priorDetail),
+      dailySeries: mergeDailySeries(currentDetail),
+    }];
+  }));
 
   const summary = plants.reduce(
     (acc, plant) => {
@@ -252,6 +263,7 @@ export async function fetchNremsDashboard(): Promise<DashboardData> {
     todaySeries: mergeTodaySeries(details),
     yesterdaySeries: mergeHistoricalSeries(yesterdayDetails),
     dailySeries: mergeDailySeries(details),
+    plantSeries,
     alerts: mergeAlerts(details),
   };
 }

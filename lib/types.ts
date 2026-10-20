@@ -46,6 +46,12 @@ export interface DailyPoint {
   energyKwh: number;
 }
 
+export interface PlantTrendData {
+  todaySeries: TodayPoint[];
+  yesterdaySeries: HourlyEnergyPoint[];
+  dailySeries: DailyPoint[];
+}
+
 export interface AlertData {
   id: string;
   plantName: string;
@@ -64,5 +70,6 @@ export interface DashboardData {
   todaySeries: TodayPoint[];
   yesterdaySeries: HourlyEnergyPoint[];
   dailySeries: DailyPoint[];
+  plantSeries: Record<string, PlantTrendData>;
   alerts: AlertData[];
 }
