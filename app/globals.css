@@ -127,6 +127,7 @@ button { color: inherit; }
 .trend-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .trend-chart text { fill: #526158; font-size: 14px; font-weight: 700; }
 .trend-chart .chart-axis-unit { fill: #405248; font-size: 14px; font-weight: 800; }
+.trend-chart .chart-axis-value { fill: #405248; font-weight: 800; }
 .chart-grid-line { stroke: var(--line); stroke-width: 1; }
 .chart-line { fill: none; stroke: var(--green-500); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .chart-line-yesterday { stroke: #98a49c; stroke-width: 2; stroke-dasharray: 7 6; }

@@ -181,7 +181,8 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLab
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
           const y = padding + ratio * (height - padding * 2);
-          return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" />;
+          const value = max * (1 - ratio);
+          return <g key={ratio}><line x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" /><text className="chart-axis-value" x={padding - 8} y={y + 5} textAnchor="end">{formatNumber(value, 0)}</text></g>;
         })}
         <text className="chart-axis-unit" x="20" y={height / 2} textAnchor="middle" transform={`rotate(-90 20 ${height / 2})`}>발전량 ({unit})</text>
         {comparisonLine ? <path d={comparisonLine} className="chart-line chart-line-yesterday" /> : null}
@@ -285,7 +286,8 @@ function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
     <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="최근 일별 발전량 막대 그래프">
       {[0, 0.5, 1].map((ratio) => {
         const y = padding + ratio * (height - padding * 2);
-        return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" />;
+        const value = max * (1 - ratio);
+        return <g key={ratio}><line x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" /><text className="chart-axis-value" x={padding - 8} y={y + 5} textAnchor="end">{formatNumber(value, 0)}</text></g>;
       })}
       <text className="chart-axis-unit" x="20" y={height / 2} textAnchor="middle" transform={`rotate(-90 20 ${height / 2})`}>발전량 (kWh)</text>
       {data.map((point, index) => {
@@ -300,7 +302,6 @@ function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
       })}
       <text x={padding} y={height - 6}>{data[0]?.date}</text>
       <text x={width - padding} y={height - 6} textAnchor="end">{data.at(-1)?.date}</text>
-      <text x={width - padding} y={padding} textAnchor="end">{`${compactNumber.format(max)} kWh`}</text>
     </svg>
   );
 }
