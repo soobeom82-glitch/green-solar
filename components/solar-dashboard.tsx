@@ -181,6 +181,7 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLab
           const y = padding + ratio * (height - padding * 2);
           return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" />;
         })}
+        <text className="chart-axis-unit" x="20" y={height / 2} textAnchor="middle" transform={`rotate(-90 20 ${height / 2})`}>발전량 ({unit})</text>
         {comparisonLine ? <path d={comparisonLine} className="chart-line chart-line-yesterday" /> : null}
         <path d={area} fill="url(#solar-area)" />
         <path d={line} className="chart-line" />
@@ -284,6 +285,7 @@ function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
         const y = padding + ratio * (height - padding * 2);
         return <line key={ratio} x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" />;
       })}
+      <text className="chart-axis-unit" x="20" y={height / 2} textAnchor="middle" transform={`rotate(-90 20 ${height / 2})`}>발전량 (kWh)</text>
       {data.map((point, index) => {
         const barHeight = (point.energyKwh / max) * (height - padding * 2);
         const x = padding + index * (chartWidth / data.length) + gap / 2;

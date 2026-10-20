@@ -126,6 +126,7 @@ button { color: inherit; }
 .chart-legend .legend-yesterday { height: 3px; background: repeating-linear-gradient(90deg, #68756d 0 7px, transparent 7px 11px); }
 .trend-chart { width: 100%; height: auto; display: block; overflow: visible; }
 .trend-chart text { fill: #526158; font-size: 14px; font-weight: 700; }
+.trend-chart .chart-axis-unit { fill: #405248; font-size: 14px; font-weight: 800; }
 .chart-grid-line { stroke: var(--line); stroke-width: 1; }
 .chart-line { fill: none; stroke: var(--green-500); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .chart-line-yesterday { stroke: #98a49c; stroke-width: 2; stroke-dasharray: 7 6; }
@@ -291,6 +292,7 @@ button { color: inherit; }
   .chart-legend small { font-size: 16px; }
   .trend-chart { min-height: 250px; }
   .trend-chart text { font-size: 34px; font-weight: 800; }
+  .trend-chart .chart-axis-unit { font-size: 24px; }
   .chart-line { stroke-width: 5; }
   .chart-line-yesterday { stroke-width: 3; }
   .plant-table-panel, .sync-panel { display: none; }
