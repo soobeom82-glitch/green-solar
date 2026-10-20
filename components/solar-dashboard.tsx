@@ -129,8 +129,10 @@ function formatChartDate(date: string) {
 
 function hourlyChartData(data: DashboardData, day: "today" | "yesterday") {
   const currentHour = koreaHour(data.updatedAt);
-  const series = day === "today" ? data.todaySeries : data.yesterdaySeries;
-  return series.filter((point) => Number(point.label) <= currentHour).map((point) => ({ label: point.label, value: point.energyKwh }));
+  const series = day === "today"
+    ? data.todaySeries.filter((point) => Number(point.label) <= currentHour)
+    : data.yesterdaySeries;
+  return series.map((point) => ({ label: point.label, value: point.energyKwh }));
 }
 
 function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLabel = "오늘", comparisonLabel = "어제" }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; unit: string; ariaLabel: string; primaryLabel?: string; comparisonLabel?: string }) {
