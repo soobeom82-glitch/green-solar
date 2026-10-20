@@ -7,6 +7,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   CloudSun,
   FileBarChart,
@@ -21,7 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { DashboardData, PlantData, PlantState, SummaryData } from "@/lib/types";
+import type { DashboardData, HourlyEnergyPoint, PlantData, PlantState, SummaryData } from "@/lib/types";
 
 type Section = "overview" | "live" | "trends" | "alerts" | "reports";
 
@@ -45,6 +46,12 @@ const koreaHourFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Seoul",
   hour: "2-digit",
   hourCycle: "h23",
+});
+const koreaDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
 });
 
 function formatNumber(value: number, maximumFractionDigits = 2) {
@@ -107,13 +114,26 @@ function koreaHour(value: string) {
   return Number(koreaHourFormatter.format(new Date(value)));
 }
 
-function hourlyChartData(data: DashboardData, day: "today" | "yesterday") {
-  const currentHour = koreaHour(data.updatedAt);
-  const series = day === "today" ? data.todaySeries.filter((point) => Number(point.label) <= currentHour) : data.yesterdaySeries;
-  return series.map((point) => ({ label: point.label, value: point.energyKwh }));
+function koreaDate(value: string) {
+  return koreaDateFormatter.format(new Date(value));
 }
 
-function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; unit: string; ariaLabel: string }) {
+function offsetDate(date: string, days: number) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+function formatChartDate(date: string) {
+  return new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" }).format(new Date(`${date}T12:00:00+09:00`));
+}
+
+function hourlyChartData(data: DashboardData, day: "today" | "yesterday") {
+  const currentHour = koreaHour(data.updatedAt);
+  const series = day === "today" ? data.todaySeries : data.yesterdaySeries;
+  return series.filter((point) => Number(point.label) <= currentHour).map((point) => ({ label: point.label, value: point.energyKwh }));
+}
+
+function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLabel = "오늘", comparisonLabel = "어제" }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; unit: string; ariaLabel: string; primaryLabel?: string; comparisonLabel?: string }) {
   const width = 720;
   const height = 280;
   const padding = 64;
@@ -146,9 +166,9 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
 
   return (
     <div className="trend-chart-wrap">
-      <div className="chart-legend" aria-label={`오늘 발전량 ${formatNumber(todayTotal)} ${unit}${comparisonData.length ? `, 어제 발전량 ${formatNumber(yesterdayTotal)} ${unit}` : ""}`}>
-        <span><i className="legend-today" /><b>오늘</b><strong>{formatNumber(todayTotal)} <small>{unit}</small></strong></span>
-        {comparisonData.length ? <span><i className="legend-yesterday" /><b>어제</b><strong>{formatNumber(yesterdayTotal)} <small>{unit}</small></strong></span> : null}
+      <div className="chart-legend" aria-label={`${primaryLabel} 발전량 ${formatNumber(todayTotal)} ${unit}${comparisonData.length ? `, ${comparisonLabel} 발전량 ${formatNumber(yesterdayTotal)} ${unit}` : ""}`}>
+        <span><i className="legend-today" /><b>{primaryLabel}</b><strong>{formatNumber(todayTotal)} <small>{unit}</small></strong></span>
+        {comparisonData.length ? <span><i className="legend-yesterday" /><b>{comparisonLabel}</b><strong>{formatNumber(yesterdayTotal)} <small>{unit}</small></strong></span> : null}
       </div>
       <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel}>
         <defs>
@@ -174,6 +194,75 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel }: { data: 
           return <text key={hour} x={x} y={height - 6} textAnchor={hour === startHour ? "start" : hour === endHour ? "end" : "middle"}>{String(hour).padStart(2, "0")}시</text>;
         })}
       </svg>
+    </div>
+  );
+}
+
+interface HistoricalTrendData {
+  date: string;
+  previousDate: string;
+  series: HourlyEnergyPoint[];
+  previousSeries: HourlyEnergyPoint[];
+}
+
+function TrendDateBrowser({ data }: { data: DashboardData }) {
+  const latestDate = koreaDate(data.updatedAt);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [historicalData, setHistoricalData] = useState<HistoricalTrendData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const activeDate = selectedDate || latestDate;
+  const isToday = activeDate === latestDate;
+
+  useEffect(() => {
+    if (isToday) {
+      setHistoricalData(null);
+      setHistoryError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoading(true);
+    setHistoryError("");
+    void fetch(`/api/history?date=${encodeURIComponent(activeDate)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("저장된 발전량을 불러오지 못했습니다.");
+        return response.json() as Promise<HistoricalTrendData>;
+      })
+      .then((nextData) => setHistoricalData(nextData))
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setHistoricalData(null);
+        setHistoryError(error instanceof Error ? error.message : "저장된 발전량을 불러오지 못했습니다.");
+      })
+      .finally(() => setIsLoading(false));
+
+    return () => controller.abort();
+  }, [activeDate, isToday]);
+
+  const primaryData: ChartPoint[] = isToday
+    ? hourlyChartData(data, "today")
+    : (historicalData?.series ?? []).map((point) => ({ label: point.label, value: point.energyKwh }));
+  const comparisonData: ChartPoint[] = isToday
+    ? hourlyChartData(data, "yesterday")
+    : (historicalData?.previousSeries ?? []).map((point) => ({ label: point.label, value: point.energyKwh }));
+  const primaryLabel = isToday ? "오늘" : formatChartDate(activeDate);
+  const comparisonDate = offsetDate(activeDate, -1);
+  const comparisonLabel = isToday ? "어제" : formatChartDate(comparisonDate);
+  const hasHistoricalData = isToday || Boolean(historicalData?.series.length || historicalData?.previousSeries.length);
+
+  return (
+    <div className="trend-browser">
+      <div className="trend-date-controls" aria-label="발전량 비교 날짜 선택">
+        <button type="button" className="date-step-button" onClick={() => setSelectedDate(offsetDate(activeDate, -1))} aria-label="이전 날짜"><ChevronLeft size={24} /></button>
+        <label className="trend-date-picker"><span>비교 날짜</span><input type="date" value={activeDate} max={latestDate} onChange={(event) => setSelectedDate(event.target.value)} /></label>
+        <button type="button" className="date-step-button" onClick={() => setSelectedDate(offsetDate(activeDate, 1))} aria-label="다음 날짜" disabled={activeDate >= latestDate}><ChevronRight size={24} /></button>
+      </div>
+      <p className="trend-date-caption"><strong>{primaryLabel}</strong>과 <strong>{comparisonLabel}</strong> 발전량 비교</p>
+      {isLoading ? <div className="empty-chart">저장된 발전량을 불러오는 중입니다.</div> : null}
+      {!isLoading && historyError ? <div className="empty-chart">{historyError}</div> : null}
+      {!isLoading && !historyError && !hasHistoricalData ? <div className="empty-chart">이 날짜의 저장된 발전량이 없습니다.</div> : null}
+      {!isLoading && !historyError && hasHistoricalData ? <TrendLineChart data={primaryData} comparisonData={comparisonData} unit="kWh" primaryLabel={primaryLabel} comparisonLabel={comparisonLabel} ariaLabel={`${primaryLabel}와 ${comparisonLabel}의 시간별 발전량 비교`} /> : null}
     </div>
   );
 }
@@ -409,7 +498,7 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
       <section className="overview-grid">
         <article className="panel chart-panel">
           <div className="panel-heading"><div><h2>오늘 발전 추이</h2><p>현재 시각까지 · 어제 시간별 발전량 비교</p></div><button type="button" className="text-button" onClick={onOpenTrends}>상세 분석 <ChevronRight size={16} /></button></div>
-          <TrendLineChart data={hourlyChartData(data, "today")} comparisonData={hourlyChartData(data, "yesterday")} unit="kWh" ariaLabel="현재 시각까지의 오늘 시간별 발전량과 어제 발전량 비교" />
+          <TrendDateBrowser data={data} />
         </article>
         <GenerationShareChart plants={data.plants} />
         <article className="panel status-panel">
@@ -496,7 +585,7 @@ function TrendsSection({ data }: { data: DashboardData }) {
       <div className="period-tabs" role="group" aria-label="분석 기간"><button type="button" className={period === "today" ? "active" : ""} onClick={() => setPeriod("today")}>오늘</button><button type="button" className={period === "month" ? "active" : ""} onClick={() => setPeriod("month")}>최근 30일</button></div>
       <article className="panel analysis-chart-panel">
         <div className="panel-heading"><div><h2>{period === "today" ? "시간별 발전량 비교" : "일별 발전량"}</h2><p>{period === "today" ? "현재 시각까지의 오늘 발전량을 어제와 비교합니다." : "일사량 변화에 따른 발전량 추이를 확인합니다."}</p></div></div>
-        {period === "today" ? <TrendLineChart data={hourlyChartData(data, "today")} comparisonData={hourlyChartData(data, "yesterday")} unit="kWh" ariaLabel="현재 시각까지의 오늘 시간별 발전량과 어제 발전량 비교" /> : <DailyBarChart data={data.dailySeries} />}
+        {period === "today" ? <TrendDateBrowser data={data} /> : <DailyBarChart data={data.dailySeries} />}
       </article>
       <section className="analysis-insights">
         <article className="panel insight-card"><span>오늘 최고 출력</span><strong>{formatNumber(Math.max(...data.todaySeries.map((point) => point.powerKw), 0))} kW</strong><p>전체 설비용량의 {formatNumber((Math.max(...data.todaySeries.map((point) => point.powerKw), 0) / Math.max(data.summary.capacityKw, 1)) * 100, 1)}%</p></article>

@@ -5,7 +5,7 @@ import type { DashboardData, HourlyEnergyPoint } from "./types";
 const LATEST_KEY = "green-solar:dashboard:latest";
 const RETENTION_SECONDS = 400 * 24 * 60 * 60;
 
-interface StoredDay {
+export interface StoredDay {
   date: string;
   updatedAt: string;
   series: HourlyEnergyPoint[];
@@ -54,4 +54,9 @@ export async function saveDashboard(data: DashboardData) {
 export async function getStoredDashboard(): Promise<DashboardData | null> {
   if (!isRedisConfigured()) return null;
   return redis().get<DashboardData>(LATEST_KEY);
+}
+
+export async function getStoredDay(date: string): Promise<StoredDay | null> {
+  if (!isRedisConfigured()) return null;
+  return redis().get<StoredDay>(dayKey(date));
 }

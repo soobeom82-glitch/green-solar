@@ -93,6 +93,15 @@ button { color: inherit; }
 .summary-status.good { color: var(--green-700); background: var(--green-100); }
 .summary-status.warning { color: var(--yellow-700); background: var(--yellow-100); }
 .chart-panel { min-height: 330px; }
+.trend-browser { min-width: 0; }
+.trend-date-controls { margin-bottom: 9px; display: flex; align-items: stretch; justify-content: flex-end; gap: 7px; }
+.date-step-button { width: 48px; min-height: 48px; border: 1px solid var(--line); border-radius: 11px; display: grid; place-items: center; color: var(--green-800); background: var(--surface); cursor: pointer; }
+.date-step-button:disabled { color: #aeb9b1; background: var(--surface-soft); cursor: not-allowed; }
+.trend-date-picker { min-height: 48px; padding: 6px 11px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-soft); }
+.trend-date-picker span { color: #526158; font-size: 14px; font-weight: 750; }
+.trend-date-picker input { min-width: 136px; border: 0; color: var(--ink); background: transparent; font-size: 16px; font-weight: 750; }
+.trend-date-caption { margin: 0 0 5px; color: #59685f; font-size: 14px; font-weight: 650; }
+.trend-date-caption strong { color: var(--ink); }
 .generation-share-panel { min-height: 330px; }
 .share-chart-layout { min-height: 245px; display: grid; grid-template-columns: minmax(148px, .78fr) minmax(0, 1fr); align-items: center; gap: 18px; }
 .share-donut { width: min(190px, 100%); aspect-ratio: 1; margin: auto; display: grid; place-items: center; border-radius: 50%; }
@@ -256,6 +265,13 @@ button { color: inherit; }
   .panel-heading p { font-size: 16px; line-height: 1.45; }
   .text-button { min-height: 48px; font-size: 15px; }
   .chart-panel { min-height: auto; }
+  .trend-date-controls { justify-content: stretch; margin-bottom: 12px; gap: 8px; }
+  .date-step-button { width: 54px; min-height: 54px; flex: 0 0 54px; border-radius: 13px; }
+  .date-step-button svg { width: 27px; height: 27px; }
+  .trend-date-picker { min-height: 54px; flex: 1; justify-content: space-between; padding-inline: 13px; border-radius: 13px; }
+  .trend-date-picker span { font-size: 16px; }
+  .trend-date-picker input { min-width: 0; max-width: 155px; font-size: 18px; }
+  .trend-date-caption { margin-bottom: 9px; font-size: 16px; line-height: 1.4; }
   .generation-share-panel { min-height: auto; }
   .share-chart-layout { min-height: auto; grid-template-columns: 1fr; gap: 17px; }
   .share-donut { width: 218px; }
