@@ -110,6 +110,18 @@ function buildLinePath(data: ChartPoint[], max: number, width = 720, height = 22
     .join(" ");
 }
 
+function chartAxis(values: number[], targetSteps = 6) {
+  const largest = Math.max(20, ...values, 1);
+  const roughStep = largest / targetSteps;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalized = roughStep / magnitude;
+  const multiplier = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  const step = multiplier * magnitude;
+  const max = Math.ceil(largest / step) * step;
+  const ticks = Array.from({ length: Math.round(max / step) + 1 }, (_, index) => Number((index * step).toFixed(10)));
+  return { max, ticks };
+}
+
 function koreaHour(value: string) {
   return Number(koreaHourFormatter.format(new Date(value)));
 }
@@ -154,7 +166,7 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLab
     return hour >= startHour && hour <= endHour;
   });
   const values = [...visibleData, ...visibleComparisonData].map((point) => point.value);
-  const max = Math.max(20, Math.ceil(Math.max(...values, 1) / 20) * 20);
+  const { max, ticks } = chartAxis(values);
   const line = buildLinePath(visibleData, max, width, height, padding, startHour, endHour);
   const comparisonLine = buildLinePath(visibleComparisonData, max, width, height, padding, startHour, endHour);
   const firstPoint = visibleData[0] ? pointCoordinates(visibleData[0], max, width, height, padding, startHour, endHour) : null;
@@ -179,10 +191,9 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLab
             <stop offset="1" stopColor="var(--green-500)" stopOpacity="0" />
           </linearGradient>
         </defs>
-        {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-          const y = padding + ratio * (height - padding * 2);
-          const value = max * (1 - ratio);
-          return <g key={ratio}><line x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" /><text className="chart-axis-value" x={padding - 8} y={y + 5} textAnchor="end">{formatNumber(value, 0)}</text></g>;
+        {ticks.map((value) => {
+          const y = height - padding - (value / max) * (height - padding * 2);
+          return <g key={value}><line x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" /><text className="chart-axis-value" x={padding - 8} y={y + 5} textAnchor="end">{formatNumber(value, 0)}</text></g>;
         })}
         <text className="chart-axis-unit" x="20" y={height / 2} textAnchor="middle" transform={`rotate(-90 20 ${height / 2})`}>발전량 ({unit})</text>
         {comparisonLine ? <path d={comparisonLine} className="chart-line chart-line-yesterday" /> : null}
@@ -275,7 +286,7 @@ function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
   const width = 720;
   const height = 280;
   const padding = 64;
-  const max = Math.max(20, Math.ceil(Math.max(...data.map((point) => point.energyKwh), 1) / 20) * 20);
+  const { max, ticks } = chartAxis(data.map((point) => point.energyKwh));
   const gap = 6;
   const chartWidth = width - padding * 2;
   const barWidth = Math.max(4, chartWidth / Math.max(data.length, 1) - gap);
@@ -284,10 +295,9 @@ function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
 
   return (
     <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="최근 일별 발전량 막대 그래프">
-      {[0, 0.5, 1].map((ratio) => {
-        const y = padding + ratio * (height - padding * 2);
-        const value = max * (1 - ratio);
-        return <g key={ratio}><line x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" /><text className="chart-axis-value" x={padding - 8} y={y + 5} textAnchor="end">{formatNumber(value, 0)}</text></g>;
+      {ticks.map((value) => {
+        const y = height - padding - (value / max) * (height - padding * 2);
+        return <g key={value}><line x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" /><text className="chart-axis-value" x={padding - 8} y={y + 5} textAnchor="end">{formatNumber(value, 0)}</text></g>;
       })}
       <text className="chart-axis-unit" x="20" y={height / 2} textAnchor="middle" transform={`rotate(-90 20 ${height / 2})`}>발전량 (kWh)</text>
       {data.map((point, index) => {
