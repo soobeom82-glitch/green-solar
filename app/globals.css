@@ -134,6 +134,15 @@ button { color: inherit; }
 .chart-point { fill: var(--surface); stroke: var(--green-500); stroke-width: 3; }
 .chart-bar { fill: var(--green-500); transition: opacity .18s ease; }
 .chart-bar:hover { opacity: .75; }
+.plant-mix-panel { padding-bottom: 10px; }
+.plant-mix-legend { display: flex; flex-wrap: wrap; gap: 9px 18px; margin-bottom: 6px; }
+.plant-mix-legend span { display: inline-flex; align-items: center; gap: 6px; color: #435248; font-size: 15px; font-weight: 750; }
+.plant-mix-legend i { width: 22px; height: 5px; display: inline-block; border-radius: 999px; }
+.plant-mix-legend strong { color: var(--ink); font-size: 17px; font-variant-numeric: tabular-nums; }
+.plant-mix-caption { margin: 0 0 4px; color: #59685f; font-size: 13px; font-weight: 650; }
+.plant-mix-bar { opacity: .28; }
+.plant-mix-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.plant-mix-line.selected { stroke-width: 5; }
 .empty-chart { min-height: 220px; display: grid; place-items: center; color: var(--muted); background: var(--surface-soft); border-radius: 12px; font-size: 13px; }
 
 .plant-list { display: grid; }
@@ -296,6 +305,13 @@ button { color: inherit; }
   .trend-chart .chart-axis-unit { font-size: 24px; }
   .chart-line { stroke-width: 5; }
   .chart-line-yesterday { stroke-width: 3; }
+  .plant-mix-legend { display: grid; gap: 10px; }
+  .plant-mix-legend span { font-size: 17px; }
+  .plant-mix-legend i { width: 28px; height: 6px; }
+  .plant-mix-legend strong { font-size: 20px; }
+  .plant-mix-caption { margin-bottom: 8px; font-size: 15px; line-height: 1.4; }
+  .plant-mix-line { stroke-width: 5; }
+  .plant-mix-line.selected { stroke-width: 7; }
   .plant-table-panel, .sync-panel { display: none; }
   .plant-row { min-height: 98px; }
   .plant-row-main strong { font-size: 17px; }
