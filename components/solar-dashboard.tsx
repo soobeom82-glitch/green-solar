@@ -154,7 +154,7 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLab
     return hour >= startHour && hour <= endHour;
   });
   const values = [...visibleData, ...visibleComparisonData].map((point) => point.value);
-  const max = Math.max(...values, 1);
+  const max = Math.max(20, Math.ceil(Math.max(...values, 1) / 20) * 20);
   const line = buildLinePath(visibleData, max, width, height, padding, startHour, endHour);
   const comparisonLine = buildLinePath(visibleComparisonData, max, width, height, padding, startHour, endHour);
   const firstPoint = visibleData[0] ? pointCoordinates(visibleData[0], max, width, height, padding, startHour, endHour) : null;
@@ -275,7 +275,7 @@ function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
   const width = 720;
   const height = 280;
   const padding = 64;
-  const max = Math.max(...data.map((point) => point.energyKwh), 1);
+  const max = Math.max(20, Math.ceil(Math.max(...data.map((point) => point.energyKwh), 1) / 20) * 20);
   const gap = 6;
   const chartWidth = width - padding * 2;
   const barWidth = Math.max(4, chartWidth / Math.max(data.length, 1) - gap);
