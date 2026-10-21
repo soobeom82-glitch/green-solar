@@ -193,7 +193,7 @@ function TrendLineChart({ data, comparisonData = [], plantSeries = [], unit, ari
         <span><i className="legend-today" /><b>{primaryLabel}</b><strong>{formatNumber(todayTotal)} <small>{unit}</small></strong></span>
         {comparisonData.length ? <span><i className="legend-yesterday" /><b>{comparisonLabel}</b><strong>{formatNumber(yesterdayTotal)} <small>{unit}</small></strong></span> : null}
       </div>
-      {showPlantBreakdown ? <div className="plant-chart-legend" aria-label="발전소별 선과 누적 막대 범례">
+      {showPlantBreakdown ? <div className="plant-chart-legend" aria-label="발전소별 누적 막대 범례">
         {plantSeries.map((series) => <span key={series.id}><i style={{ backgroundColor: series.color }} /><b>{series.name.replace(" 태양광발전소", "")}</b></span>)}
         <small>색 막대는 시간대별 누적 발전량입니다.</small>
       </div> : null}
@@ -224,7 +224,6 @@ function TrendLineChart({ data, comparisonData = [], plantSeries = [], unit, ari
         {comparisonLine ? <path d={comparisonLine} className="chart-line chart-line-yesterday" /> : null}
         <path d={area} fill="url(#solar-area)" />
         <path d={line} className={`chart-line${showPlantBreakdown ? " chart-total-line" : ""}`} />
-        {showPlantBreakdown ? plantSeries.map((series) => <path key={series.id} d={buildLinePath(series.points.filter((point) => Number(point.label) >= startHour && Number(point.label) <= endHour), max, width, height, padding, startHour, endHour)} className="plant-series-line" style={{ stroke: series.color }} />) : null}
         {visibleData.map((point, index) => {
           if (index !== visibleData.length - 1 && Number(point.label) % 3 !== 0) return null;
           const { x, y } = pointCoordinates(point, max, width, height, padding, startHour, endHour);
