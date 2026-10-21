@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     previousDate: previous,
     series,
     previousSeries,
+    plantSeries: plantId ? undefined : selectedDay?.plantSeries ?? {},
     updatedAt: selectedDay?.updatedAt ?? null,
   }, {
     headers: { "cache-control": "private, no-store, max-age=0" },

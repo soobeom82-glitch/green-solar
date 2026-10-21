@@ -91,6 +91,9 @@ function summaryForPlant(plant: PlantData): SummaryData {
 }
 
 type ChartPoint = { label: string; value: number };
+type PlantChartSeries = { id: string; name: string; color: string; points: ChartPoint[] };
+
+const plantChartColors = ["#2d9d5d", "#2b76b8", "#d88a2d", "#8155b7"];
 
 function pointCoordinates(point: ChartPoint, max: number, width: number, height: number, padding: number, startHour = 0, endHour = 23) {
   const hour = Number.parseInt(point.label, 10);
@@ -149,7 +152,7 @@ function hourlyChartData(data: DashboardData, day: "today" | "yesterday", plantI
   return visibleSeries.map((point) => ({ label: point.label, value: point.energyKwh }));
 }
 
-function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLabel = "오늘", comparisonLabel = "어제" }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; unit: string; ariaLabel: string; primaryLabel?: string; comparisonLabel?: string }) {
+function TrendLineChart({ data, comparisonData = [], plantSeries = [], unit, ariaLabel, primaryLabel = "오늘", comparisonLabel = "어제" }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; plantSeries?: PlantChartSeries[]; unit: string; ariaLabel: string; primaryLabel?: string; comparisonLabel?: string }) {
   const width = 720;
   const height = 280;
   const padding = 64;
@@ -177,6 +180,10 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLab
   const tickHours = Array.from(new Set([startHour, Math.round((startHour * 2 + endHour) / 3), Math.round((startHour + endHour * 2) / 3), endHour]));
   const todayTotal = data.reduce((total, point) => total + point.value, 0);
   const yesterdayTotal = comparisonData.reduce((total, point) => total + point.value, 0);
+  const showPlantBreakdown = plantSeries.length > 1;
+  const chartWidth = width - padding * 2;
+  const chartHours = Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
+  const barWidth = Math.min(28, Math.max(8, (chartWidth / Math.max(chartHours.length, 1)) * 0.68));
 
   if (!visibleData.length) return <EmptyChart />;
 
@@ -186,6 +193,10 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLab
         <span><i className="legend-today" /><b>{primaryLabel}</b><strong>{formatNumber(todayTotal)} <small>{unit}</small></strong></span>
         {comparisonData.length ? <span><i className="legend-yesterday" /><b>{comparisonLabel}</b><strong>{formatNumber(yesterdayTotal)} <small>{unit}</small></strong></span> : null}
       </div>
+      {showPlantBreakdown ? <div className="plant-chart-legend" aria-label="발전소별 선과 누적 막대 범례">
+        {plantSeries.map((series) => <span key={series.id}><i style={{ backgroundColor: series.color }} /><b>{series.name.replace(" 태양광발전소", "")}</b></span>)}
+        <small>색 막대는 시간대별 누적 발전량입니다.</small>
+      </div> : null}
       <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel}>
         <defs>
           <linearGradient id="solar-area" x1="0" y1="0" x2="0" y2="1">
@@ -198,9 +209,22 @@ function TrendLineChart({ data, comparisonData = [], unit, ariaLabel, primaryLab
           return <g key={value}><line x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" /><text className="chart-axis-value" x={padding - 8} y={y + 5} textAnchor="end">{formatNumber(value, 0)}</text></g>;
         })}
         <text className="chart-axis-unit" x="20" y={height / 2} textAnchor="middle" transform={`rotate(-90 20 ${height / 2})`}>발전량 ({unit})</text>
+        {showPlantBreakdown ? chartHours.map((hour) => {
+          const label = String(hour).padStart(2, "0");
+          const x = Math.max(padding, Math.min(width - padding - barWidth, padding + ((hour - startHour) / Math.max(endHour - startHour, 1)) * chartWidth - barWidth / 2));
+          let accumulated = 0;
+          return <g key={`stack-${label}`}>{plantSeries.map((series) => {
+            const value = series.points.find((point) => point.label === label)?.value ?? 0;
+            const segmentHeight = (value / max) * (height - padding * 2);
+            const y = height - padding - ((accumulated + value) / max) * (height - padding * 2);
+            accumulated += value;
+            return value > 0 ? <rect key={series.id} x={x} y={y} width={barWidth} height={segmentHeight} rx="2" fill={series.color} className="plant-stack-bar"><title>{`${series.name} ${label}시 · ${formatNumber(value)} ${unit}`}</title></rect> : null;
+          })}</g>;
+        }) : null}
         {comparisonLine ? <path d={comparisonLine} className="chart-line chart-line-yesterday" /> : null}
         <path d={area} fill="url(#solar-area)" />
-        <path d={line} className="chart-line" />
+        <path d={line} className={`chart-line${showPlantBreakdown ? " chart-total-line" : ""}`} />
+        {showPlantBreakdown ? plantSeries.map((series) => <path key={series.id} d={buildLinePath(series.points.filter((point) => Number(point.label) >= startHour && Number(point.label) <= endHour), max, width, height, padding, startHour, endHour)} className="plant-series-line" style={{ stroke: series.color }} />) : null}
         {visibleData.map((point, index) => {
           if (index !== visibleData.length - 1 && Number(point.label) % 3 !== 0) return null;
           const { x, y } = pointCoordinates(point, max, width, height, padding, startHour, endHour);
@@ -220,6 +244,16 @@ interface HistoricalTrendData {
   previousDate: string;
   series: HourlyEnergyPoint[];
   previousSeries: HourlyEnergyPoint[];
+  plantSeries?: Record<string, HourlyEnergyPoint[]>;
+}
+
+function plantSeriesForChart(plants: PlantData[], series: Record<string, Array<{ label: string; energyKwh: number }>> | undefined) {
+  return plants.map((plant, index) => ({
+    id: plant.id,
+    name: plant.name,
+    color: plantChartColors[index % plantChartColors.length],
+    points: (series?.[plant.id] ?? []).map((point) => ({ label: point.label, value: point.energyKwh })),
+  })).filter((plant) => plant.points.length > 0);
 }
 
 function TrendDateBrowser({ data, plantId }: { data: DashboardData; plantId?: string }) {
@@ -269,6 +303,9 @@ function TrendDateBrowser({ data, plantId }: { data: DashboardData; plantId?: st
   const comparisonDate = offsetDate(activeDate, -1);
   const comparisonLabel = isToday ? "어제" : formatChartDate(comparisonDate);
   const hasHistoricalData = isToday || Boolean(historicalData?.series.length || historicalData?.previousSeries.length);
+  const plantChartSeries = plantId ? [] : plantSeriesForChart(data.plants, isToday
+    ? Object.fromEntries(Object.entries(data.plantSeries).map(([id, series]) => [id, series.todaySeries]))
+    : historicalData?.plantSeries);
 
   return (
     <div className="trend-browser">
@@ -281,7 +318,7 @@ function TrendDateBrowser({ data, plantId }: { data: DashboardData; plantId?: st
       {isLoading ? <div className="empty-chart">저장된 발전량을 불러오는 중입니다.</div> : null}
       {!isLoading && historyError ? <div className="empty-chart">{historyError}</div> : null}
       {!isLoading && !historyError && !hasHistoricalData ? <div className="empty-chart">이 날짜의 저장된 발전량이 없습니다.</div> : null}
-      {!isLoading && !historyError && hasHistoricalData ? <TrendLineChart data={primaryData} comparisonData={comparisonData} unit="kWh" primaryLabel={primaryLabel} comparisonLabel={comparisonLabel} ariaLabel={`${primaryLabel}와 ${comparisonLabel}의 시간별 발전량 비교`} /> : null}
+      {!isLoading && !historyError && hasHistoricalData ? <TrendLineChart data={primaryData} comparisonData={comparisonData} plantSeries={plantChartSeries} unit="kWh" primaryLabel={primaryLabel} comparisonLabel={comparisonLabel} ariaLabel={`${primaryLabel}와 ${comparisonLabel}의 시간별 발전량 비교`} /> : null}
     </div>
   );
 }
@@ -317,74 +354,6 @@ function DailyBarChart({ data }: { data: DashboardData["dailySeries"] }) {
       <text x={padding} y={height - 6}>{data[0]?.date}</text>
       <text x={width - padding} y={height - 6} textAnchor="end">{data.at(-1)?.date}</text>
     </svg>
-  );
-}
-
-function PlantProductionMixChart({ data, selectedPlantId }: { data: DashboardData; selectedPlantId?: string }) {
-  const width = 720;
-  const height = 300;
-  const padding = 64;
-  const colors = ["#2d9d5d", "#2b76b8", "#d88a2d", "#8155b7"];
-  const plantSeries = data.plants.map((plant, index) => {
-    const points = hourlyChartData(data, "today", plant.id);
-    return {
-      plant,
-      color: colors[index % colors.length],
-      points,
-      values: new Map(points.map((point) => [point.label, point.value])),
-      total: points.reduce((sum, point) => sum + point.value, 0),
-    };
-  });
-  const labels = Array.from(new Set(plantSeries.flatMap((series) => series.points.map((point) => point.label))))
-    .sort((first, second) => Number(first) - Number(second));
-  if (!labels.length) return <EmptyChart />;
-
-  const hours = labels.map(Number).filter(Number.isFinite);
-  const startHour = Math.max(0, Math.min(...hours) - 1);
-  const endHour = Math.min(23, Math.max(...hours) + 1);
-  const chartHours = Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
-  const hourlyTotals = chartHours.map((hour) => plantSeries.reduce((sum, series) => sum + (series.values.get(String(hour).padStart(2, "0")) ?? 0), 0));
-  const { max, ticks } = chartAxis(hourlyTotals);
-  const chartWidth = width - padding * 2;
-  const slotWidth = chartWidth / Math.max(chartHours.length, 1);
-  const barWidth = Math.max(5, slotWidth * 0.62);
-  const totalGeneration = plantSeries.reduce((sum, series) => sum + series.total, 0);
-  const tickHours = Array.from(new Set([startHour, Math.round((startHour * 2 + endHour) / 3), Math.round((startHour + endHour * 2) / 3), endHour]));
-
-  return (
-    <div className="plant-mix-chart-wrap">
-      <div className="plant-mix-legend" aria-label="발전소별 금일 발전량과 비중">
-        {plantSeries.map((series) => <span key={series.plant.id}><i style={{ backgroundColor: series.color }} /><b>{series.plant.name.replace(" 태양광발전소", "")}</b><strong>{formatNumber(series.total)} kWh · {formatNumber(totalGeneration > 0 ? (series.total / totalGeneration) * 100 : 0, 1)}%</strong></span>)}
-      </div>
-      <p className="plant-mix-caption">색 막대는 시간대별 누적 발전량, 선은 발전소별 발전 추이입니다.</p>
-      <svg className="trend-chart plant-mix-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="발전소별 시간대 발전량 선 그래프와 누적 막대 그래프">
-        {ticks.map((value) => {
-          const y = height - padding - (value / max) * (height - padding * 2);
-          return <g key={value}><line x1={padding} y1={y} x2={width - padding} y2={y} className="chart-grid-line" /><text className="chart-axis-value" x={padding - 8} y={y + 5} textAnchor="end">{formatNumber(value, 0)}</text></g>;
-        })}
-        <text className="chart-axis-unit" x="20" y={height / 2} textAnchor="middle" transform={`rotate(-90 20 ${height / 2})`}>발전량 (kWh)</text>
-        {chartHours.map((hour, hourIndex) => {
-          const label = String(hour).padStart(2, "0");
-          const x = padding + hourIndex * slotWidth + (slotWidth - barWidth) / 2;
-          let accumulated = 0;
-          return <g key={label}>{plantSeries.map((series) => {
-            const value = series.values.get(label) ?? 0;
-            const segmentHeight = (value / max) * (height - padding * 2);
-            const y = height - padding - ((accumulated + value) / max) * (height - padding * 2);
-            accumulated += value;
-            return <rect key={series.plant.id} x={x} y={y} width={barWidth} height={segmentHeight} rx="2" fill={series.color} className="plant-mix-bar"><title>{`${series.plant.name} ${label}시 · ${formatNumber(value)} kWh`}</title></rect>;
-          })}</g>;
-        })}
-        {plantSeries.map((series) => {
-          const points = chartHours.map((hour) => ({ label: String(hour).padStart(2, "0"), value: series.values.get(String(hour).padStart(2, "0")) ?? 0 }));
-          return <path key={series.plant.id} d={buildLinePath(points, max, width, height, padding, startHour, endHour)} className={`plant-mix-line${selectedPlantId === series.plant.id ? " selected" : ""}`} style={{ stroke: series.color }} />;
-        })}
-        {tickHours.map((hour) => {
-          const x = padding + ((hour - startHour) / Math.max(endHour - startHour, 1)) * chartWidth;
-          return <text key={hour} x={x} y={height - 6} textAnchor={hour === startHour ? "start" : hour === endHour ? "end" : "middle"}>{String(hour).padStart(2, "0")}시</text>;
-        })}
-      </svg>
-    </div>
   );
 }
 
@@ -685,7 +654,6 @@ function TrendsSection({ data, selectedPlant }: { data: DashboardData; selectedP
         <article className="panel insight-card"><span>금일 발전량</span><strong>{formatNumber(summary.todayKwh)} kWh</strong><p>{scopeLabel} 기준</p></article>
         <article className="panel insight-card"><span>누적 발전량</span><strong>{formatNumber(summary.totalKwh / 1_000_000)} GWh</strong><p>{scopeLabel} 누적</p></article>
       </section>
-      {period === "today" ? <article className="panel plant-mix-panel"><div className="panel-heading"><div><h2>발전소별 추이·비중</h2><p>두 발전소의 생산량과 시간대별 비중을 함께 봅니다.</p></div></div><PlantProductionMixChart data={data} selectedPlantId={selectedPlant?.id} /></article> : null}
     </div>
   );
 }
