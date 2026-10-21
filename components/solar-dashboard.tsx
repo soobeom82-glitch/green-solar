@@ -152,7 +152,7 @@ function hourlyChartData(data: DashboardData, day: "today" | "yesterday", plantI
   return visibleSeries.map((point) => ({ label: point.label, value: point.energyKwh }));
 }
 
-function TrendLineChart({ data, comparisonData = [], plantSeries = [], unit, ariaLabel, primaryLabel = "오늘", comparisonLabel = "어제" }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; plantSeries?: PlantChartSeries[]; unit: string; ariaLabel: string; primaryLabel?: string; comparisonLabel?: string }) {
+function TrendLineChart({ data, comparisonData = [], plantSeries = [], primaryColor = plantChartColors[0], unit, ariaLabel, primaryLabel = "오늘", comparisonLabel = "어제" }: { data: ChartPoint[]; comparisonData?: ChartPoint[]; plantSeries?: PlantChartSeries[]; primaryColor?: string; unit: string; ariaLabel: string; primaryLabel?: string; comparisonLabel?: string }) {
   const width = 720;
   const height = 280;
   const padding = 64;
@@ -190,7 +190,7 @@ function TrendLineChart({ data, comparisonData = [], plantSeries = [], unit, ari
   return (
     <div className="trend-chart-wrap">
       <div className="chart-legend" aria-label={`${primaryLabel} 발전량 ${formatNumber(todayTotal)} ${unit}${comparisonData.length ? `, ${comparisonLabel} 발전량 ${formatNumber(yesterdayTotal)} ${unit}` : ""}`}>
-        <span><i className="legend-today" /><b>{primaryLabel}</b><strong>{formatNumber(todayTotal)} <small>{unit}</small></strong></span>
+        <span><i className="legend-today" style={{ background: primaryColor }} /><b>{primaryLabel}</b><strong>{formatNumber(todayTotal)} <small>{unit}</small></strong></span>
         {comparisonData.length ? <span><i className="legend-yesterday" /><b>{comparisonLabel}</b><strong>{formatNumber(yesterdayTotal)} <small>{unit}</small></strong></span> : null}
       </div>
       {showPlantBreakdown ? <div className="plant-chart-legend" aria-label="발전소별 누적 막대 범례">
@@ -200,8 +200,8 @@ function TrendLineChart({ data, comparisonData = [], plantSeries = [], unit, ari
       <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel}>
         <defs>
           <linearGradient id="solar-area" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="var(--green-500)" stopOpacity="0.24" />
-            <stop offset="1" stopColor="var(--green-500)" stopOpacity="0" />
+            <stop offset="0" stopColor={primaryColor} stopOpacity="0.24" />
+            <stop offset="1" stopColor={primaryColor} stopOpacity="0" />
           </linearGradient>
         </defs>
         {ticks.map((value) => {
@@ -223,11 +223,11 @@ function TrendLineChart({ data, comparisonData = [], plantSeries = [], unit, ari
         }) : null}
         {comparisonLine ? <path d={comparisonLine} className="chart-line chart-line-yesterday" /> : null}
         <path d={area} fill="url(#solar-area)" />
-        <path d={line} className={`chart-line${showPlantBreakdown ? " chart-total-line" : ""}`} />
+        <path d={line} className={`chart-line${showPlantBreakdown ? " chart-total-line" : ""}`} style={{ stroke: primaryColor }} />
         {visibleData.map((point, index) => {
           if (index !== visibleData.length - 1 && Number(point.label) % 3 !== 0) return null;
           const { x, y } = pointCoordinates(point, max, width, height, padding, startHour, endHour);
-          return <circle key={`${point.label}-${index}`} cx={x} cy={y} r="4" className="chart-point"><title>{`오늘 ${point.label}시 · ${compactNumber.format(point.value)} ${unit}`}</title></circle>;
+          return <circle key={`${point.label}-${index}`} cx={x} cy={y} r="4" className="chart-point" style={{ stroke: primaryColor }}><title>{`오늘 ${point.label}시 · ${compactNumber.format(point.value)} ${unit}`}</title></circle>;
         })}
         {tickHours.map((hour) => {
           const x = padding + ((hour - startHour) / Math.max(endHour - startHour, 1)) * (width - padding * 2);
@@ -305,6 +305,8 @@ function TrendDateBrowser({ data, plantId }: { data: DashboardData; plantId?: st
   const plantChartSeries = plantId ? [] : plantSeriesForChart(data.plants, isToday
     ? Object.fromEntries(Object.entries(data.plantSeries).map(([id, series]) => [id, series.todaySeries]))
     : historicalData?.plantSeries);
+  const selectedPlantIndex = plantId ? data.plants.findIndex((plant) => plant.id === plantId) : -1;
+  const primaryColor = selectedPlantIndex >= 0 ? plantChartColors[selectedPlantIndex % plantChartColors.length] : plantChartColors[0];
 
   return (
     <div className="trend-browser">
@@ -317,7 +319,7 @@ function TrendDateBrowser({ data, plantId }: { data: DashboardData; plantId?: st
       {isLoading ? <div className="empty-chart">저장된 발전량을 불러오는 중입니다.</div> : null}
       {!isLoading && historyError ? <div className="empty-chart">{historyError}</div> : null}
       {!isLoading && !historyError && !hasHistoricalData ? <div className="empty-chart">이 날짜의 저장된 발전량이 없습니다.</div> : null}
-      {!isLoading && !historyError && hasHistoricalData ? <TrendLineChart data={primaryData} comparisonData={comparisonData} plantSeries={plantChartSeries} unit="kWh" primaryLabel={primaryLabel} comparisonLabel={comparisonLabel} ariaLabel={`${primaryLabel}와 ${comparisonLabel}의 시간별 발전량 비교`} /> : null}
+      {!isLoading && !historyError && hasHistoricalData ? <TrendLineChart data={primaryData} comparisonData={comparisonData} plantSeries={plantChartSeries} primaryColor={primaryColor} unit="kWh" primaryLabel={primaryLabel} comparisonLabel={comparisonLabel} ariaLabel={`${primaryLabel}와 ${comparisonLabel}의 시간별 발전량 비교`} /> : null}
     </div>
   );
 }
@@ -576,14 +578,13 @@ function OverviewSection({ data, summary, selectedPlant, monthEnergy, outputRate
 }
 
 function GenerationShareChart({ plants }: { plants: PlantData[] }) {
-  const colors = ["#2d9d5d", "#2b76b8", "#d88a2d", "#8155b7"];
   const totalToday = plants.reduce((total, plant) => total + plant.todayKwh, 0);
   let cumulativePercent = 0;
   const shares = plants.map((plant, index) => {
     const percent = totalToday > 0 ? (plant.todayKwh / totalToday) * 100 : 0;
     const start = cumulativePercent;
     cumulativePercent += percent;
-    return { plant, percent, start, end: cumulativePercent, color: colors[index % colors.length] };
+    return { plant, percent, start, end: cumulativePercent, color: plantChartColors[index % plantChartColors.length] };
   });
   const pieBackground = totalToday > 0
     ? `conic-gradient(${shares.map((share) => `${share.color} ${share.start}% ${share.end}%`).join(", ")})`
