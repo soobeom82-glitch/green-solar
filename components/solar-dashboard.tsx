@@ -489,6 +489,7 @@ export function SolarDashboard() {
               <OverviewSection
                 data={data}
                 summary={activeSummary ?? data.summary}
+                selectedPlant={selectedPlant}
                 monthEnergy={monthEnergy}
                 outputRate={outputRate}
                 normalTotal={normalTotal}
@@ -515,9 +516,10 @@ export function SolarDashboard() {
   );
 }
 
-function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, monitoredTotal, yesterdayDelta, onSelectPlant, onOpenTrends }: {
+function OverviewSection({ data, summary, selectedPlant, monthEnergy, outputRate, normalTotal, monitoredTotal, yesterdayDelta, onSelectPlant, onOpenTrends }: {
   data: DashboardData;
   summary: SummaryData;
+  selectedPlant: PlantData | null;
   monthEnergy: { value: number; unit: string };
   outputRate: number;
   normalTotal: number;
@@ -552,8 +554,8 @@ function OverviewSection({ data, summary, monthEnergy, outputRate, normalTotal, 
 
       <section className="overview-grid">
         <article className="panel chart-panel">
-          <div className="panel-heading"><div><h2>오늘 발전 추이</h2><p>현재 시각까지 · 어제 시간별 발전량 비교</p></div><button type="button" className="text-button" onClick={onOpenTrends}>상세 분석 <ChevronRight size={16} /></button></div>
-          <TrendDateBrowser data={data} />
+          <div className="panel-heading"><div><h2>오늘 발전 추이</h2><p>{selectedPlant ? `${selectedPlant.name.replace(" 태양광발전소", "")} · ` : ""}현재 시각까지 · 어제 시간별 발전량 비교</p></div><button type="button" className="text-button" onClick={onOpenTrends}>상세 분석 <ChevronRight size={16} /></button></div>
+          <TrendDateBrowser data={data} plantId={selectedPlant?.id} />
         </article>
         <GenerationShareChart plants={data.plants} />
         <article className="panel status-panel">
